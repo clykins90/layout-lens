@@ -1,0 +1,14 @@
+/Users/courtlykins/repos/layout-lens/api/target/debug/deps/serde-ad0435dbf3d736cc.d: /Users/courtlykins/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/lib.rs /Users/courtlykins/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/integer128.rs /Users/courtlykins/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/private/mod.rs /Users/courtlykins/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/private/de.rs /Users/courtlykins/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/private/ser.rs /Users/courtlykins/repos/layout-lens/api/target/debug/build/serde-2beb76a2a4a45d11/out/private.rs
+
+/Users/courtlykins/repos/layout-lens/api/target/debug/deps/libserde-ad0435dbf3d736cc.rlib: /Users/courtlykins/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/lib.rs /Users/courtlykins/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/integer128.rs /Users/courtlykins/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/private/mod.rs /Users/courtlykins/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/private/de.rs /Users/courtlykins/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/private/ser.rs /Users/courtlykins/repos/layout-lens/api/target/debug/build/serde-2beb76a2a4a45d11/out/private.rs
+
+/Users/courtlykins/repos/layout-lens/api/target/debug/deps/libserde-ad0435dbf3d736cc.rmeta: /Users/courtlykins/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/lib.rs /Users/courtlykins/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/integer128.rs /Users/courtlykins/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/private/mod.rs /Users/courtlykins/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/private/de.rs /Users/courtlykins/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/private/ser.rs /Users/courtlykins/repos/layout-lens/api/target/debug/build/serde-2beb76a2a4a45d11/out/private.rs
+
+/Users/courtlykins/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/lib.rs:
+/Users/courtlykins/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/integer128.rs:
+/Users/courtlykins/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/private/mod.rs:
+/Users/courtlykins/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/private/de.rs:
+/Users/courtlykins/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/private/ser.rs:
+/Users/courtlykins/repos/layout-lens/api/target/debug/build/serde-2beb76a2a4a45d11/out/private.rs:
+
+# env-dep:OUT_DIR=/Users/courtlykins/repos/layout-lens/api/target/debug/build/serde-2beb76a2a4a45d11/out
