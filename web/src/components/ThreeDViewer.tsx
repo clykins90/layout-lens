@@ -1,5 +1,5 @@
-import React, { useMemo } from 'react';
-import { Canvas } from '@react-three/fiber';
+import React, { useMemo, useEffect, useRef } from 'react';
+import { Canvas, useThree, useFrame } from '@react-three/fiber';
 import { PointerLockControls, Sky } from '@react-three/drei';
 import * as THREE from 'three';
 import type { Project, Element, Room } from '../types';
@@ -8,11 +8,99 @@ import type { Project, Element, Room } from '../types';
 const SCALE = 0.1; // Scale down so it's not huge
 const WALL_HEIGHT_DEFAULT = 300; // px
 const PLAYER_HEIGHT = 170 * SCALE; // Eye level
+const MOVEMENT_SPEED = 5; // Units per second
 
 interface ThreeDViewerProps {
   project: Project;
   onExit: () => void;
 }
+
+const PlayerController = () => {
+  const { camera } = useThree();
+  const moveForward = useRef(false);
+  const moveBackward = useRef(false);
+  const moveLeft = useRef(false);
+  const moveRight = useRef(false);
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      switch (event.code) {
+        case 'ArrowUp':
+        case 'KeyW':
+          moveForward.current = true;
+          break;
+        case 'ArrowLeft':
+        case 'KeyA':
+          moveLeft.current = true;
+          break;
+        case 'ArrowDown':
+        case 'KeyS':
+          moveBackward.current = true;
+          break;
+        case 'ArrowRight':
+        case 'KeyD':
+          moveRight.current = true;
+          break;
+      }
+    };
+
+    const onKeyUp = (event: KeyboardEvent) => {
+      switch (event.code) {
+        case 'ArrowUp':
+        case 'KeyW':
+          moveForward.current = false;
+          break;
+        case 'ArrowLeft':
+        case 'KeyA':
+          moveLeft.current = false;
+          break;
+        case 'ArrowDown':
+        case 'KeyS':
+          moveBackward.current = false;
+          break;
+        case 'ArrowRight':
+        case 'KeyD':
+          moveRight.current = false;
+          break;
+      }
+    };
+
+    document.addEventListener('keydown', onKeyDown);
+    document.addEventListener('keyup', onKeyUp);
+
+    return () => {
+      document.removeEventListener('keydown', onKeyDown);
+      document.removeEventListener('keyup', onKeyUp);
+    };
+  }, []);
+
+  useFrame((_, delta) => {
+    const speed = MOVEMENT_SPEED * delta * 100 * SCALE; // Adjust speed relative to scale
+    const direction = new THREE.Vector3();
+    const frontVector = new THREE.Vector3(
+      0,
+      0,
+      Number(moveBackward.current) - Number(moveForward.current)
+    );
+    const sideVector = new THREE.Vector3(
+      Number(moveLeft.current) - Number(moveRight.current),
+      0,
+      0
+    );
+
+    direction
+      .subVectors(frontVector, sideVector)
+      .normalize()
+      .multiplyScalar(speed)
+      .applyEuler(camera.rotation);
+
+    camera.position.add(direction);
+    // Lock height to stay on ground
+    camera.position.y = PLAYER_HEIGHT; 
+  });
+
+  return null;
+};
 
 // Helper to convert 2D points to 3D mesh props
 const WallMesh = ({ element }: { element: Element }) => {
@@ -88,6 +176,7 @@ const ThreeDViewer: React.FC<ThreeDViewerProps> = ({ project, onExit }) => {
         <pointLight position={[100, 100, 100]} intensity={1} castShadow />
         
         <PointerLockControls selector="#canvas-container" />
+        <PlayerController />
 
         <group>
             {/* Ground Plane (Infinite-ish) */}
