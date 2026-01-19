@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { Stage, Layer, Rect, Circle, Line, Text, Group, Path } from 'react-konva';
 import Konva from 'konva';
-import { MousePointer2, ToggleLeft, Plug, Lightbulb, Tv, Frame, Spline, CircleDot, Trash2 } from 'lucide-react';
+import { MousePointer2, ToggleLeft, Plug, Lightbulb, Tv, Frame, Spline, CircleDot, Trash2, ZoomIn, ZoomOut, Maximize2 } from 'lucide-react';
 
 import {
     Dialog,
@@ -129,12 +129,50 @@ const getIntersections = (targetWall: Element, allElements: Element[]) => {
 const ElevationEditor: React.FC<ElevationEditorProps> = ({ element, allElements, onUpdate, onClose }) => {
     const [tool, setTool] = useState<ToolType>('select');
     const [selectedItemId, setSelectedId] = useState<string | null>(null);
+    const [stageScale, setStageScale] = useState(1);
+    const [stagePos, setStagePos] = useState({ x: 0, y: 0 });
+
+    const stageRef = useRef<Konva.Stage>(null);
+    const containerRef = useRef<HTMLDivElement>(null);
 
     const wallLength = Math.sqrt(Math.pow(element.end.x - element.start.x, 2) + Math.pow(element.end.y - element.start.y, 2));
     const wallHeight = element.height || 400;
 
     const intersections = getIntersections(element, allElements);
     const selectedItem = element.items?.find(i => i.id === selectedItemId);
+
+    // Zoom handlers
+    const handleWheel = (e: Konva.KonvaEventObject<WheelEvent>) => {
+        e.evt.preventDefault();
+        const stage = stageRef.current;
+        if (!stage) return;
+        const oldScale = stage.scaleX();
+        const pointer = stage.getPointerPosition();
+        if (!pointer) return;
+        const mousePointTo = { x: (pointer.x - stage.x()) / oldScale, y: (pointer.y - stage.y()) / oldScale };
+        const newScale = e.evt.deltaY < 0 ? oldScale * 1.1 : oldScale / 1.1;
+        setStageScale(newScale);
+        setStagePos({ x: pointer.x - mousePointTo.x * newScale, y: pointer.y - mousePointTo.y * newScale });
+    };
+
+    const handleZoomIn = () => setStageScale(s => s * 1.2);
+    const handleZoomOut = () => setStageScale(s => s / 1.2);
+
+    const handleFitToView = () => {
+        const container = containerRef.current;
+        if (!container) return;
+        const padding = 40;
+        const availableWidth = container.clientWidth - padding * 2;
+        const availableHeight = container.clientHeight - padding * 2;
+        const contentWidth = wallLength + 100;
+        const contentHeight = wallHeight + 100;
+        const scale = Math.min(availableWidth / contentWidth, availableHeight / contentHeight, 1);
+        setStageScale(scale);
+        // Center the content
+        const offsetX = (container.clientWidth - contentWidth * scale) / 2;
+        const offsetY = (container.clientHeight - contentHeight * scale) / 2;
+        setStagePos({ x: offsetX, y: offsetY });
+    };
 
     const handleStageClick = (e: Konva.KonvaEventObject<MouseEvent>) => {
         const stage = e.target.getStage();
@@ -347,9 +385,19 @@ const ElevationEditor: React.FC<ElevationEditorProps> = ({ element, allElements,
                     </div>
 
                     {/* Canvas */}
-                    <div className="flex-1 min-w-0 bg-muted/20 relative overflow-auto">
-                        <div className="min-w-fit min-h-fit p-4">
-                            <Stage width={wallLength + 100} height={wallHeight + 100} onClick={handleStageClick}>
+                    <div ref={containerRef} className="flex-1 min-w-0 bg-muted/20 relative overflow-hidden">
+                        <Stage
+                            ref={stageRef}
+                            width={Math.floor(window.innerWidth * 0.95 - 96 - 256 - 32)}
+                            height={Math.floor(window.innerHeight * 0.9 - 80)}
+                            onClick={handleStageClick}
+                            onWheel={handleWheel}
+                            draggable={tool === 'select'}
+                            scaleX={stageScale}
+                            scaleY={stageScale}
+                            x={stagePos.x}
+                            y={stagePos.y}
+                        >
                             <Layer>
                                 <Rect name="background" x={50} y={50} width={wallLength} height={wallHeight} fill="white" stroke="#333" strokeWidth={2} />
                                 {Array.from({ length: Math.ceil(wallLength / 50) }).map((_, i) => (
@@ -416,7 +464,22 @@ const ElevationEditor: React.FC<ElevationEditorProps> = ({ element, allElements,
                                     );
                                 })}
                             </Layer>
-                            </Stage>
+                        </Stage>
+
+                        {/* Zoom Controls */}
+                        <div className="absolute bottom-4 right-4 flex gap-1 bg-background/90 border rounded-lg p-1 shadow-sm">
+                            <Button variant="ghost" size="sm" onClick={handleFitToView} title="Fit to view">
+                                <Maximize2 className="size-4" />
+                            </Button>
+                            <Button variant="ghost" size="sm" onClick={handleZoomOut} title="Zoom out">
+                                <ZoomOut className="size-4" />
+                            </Button>
+                            <span className="px-2 text-xs flex items-center text-muted-foreground min-w-[3rem] justify-center">
+                                {Math.round(stageScale * 100)}%
+                            </span>
+                            <Button variant="ghost" size="sm" onClick={handleZoomIn} title="Zoom in">
+                                <ZoomIn className="size-4" />
+                            </Button>
                         </div>
                     </div>
 
