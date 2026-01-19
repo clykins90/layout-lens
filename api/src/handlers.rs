@@ -1,10 +1,18 @@
 use axum::{
     extract::{Path, Json},
+    http::StatusCode,
+    response::IntoResponse,
 };
 use uuid::Uuid;
 use crate::models::{Project, SemanticProject};
 use crate::state::PROJECTS;
 use crate::services::interpret_semantic_logic;
+use crate::ai;
+
+#[derive(serde::Deserialize)]
+pub struct AiPrompt {
+    pub prompt: String,
+}
 
 pub async fn health_check() -> &'static str {
     "OK"
@@ -43,4 +51,16 @@ pub async fn get_project(Path(id): Path<String>) -> Json<Option<Project>> {
 pub async fn interpret_semantic(Json(payload): Json<SemanticProject>) -> Json<Project> {
     let project = interpret_semantic_logic(payload);
     Json(project)
+}
+
+pub async fn generate_ai_layout(Json(payload): Json<AiPrompt>) -> impl IntoResponse {
+    match ai::generate_semantic_project(payload.prompt).await {
+        Ok(semantic_proj) => {
+            let project = interpret_semantic_logic(semantic_proj);
+            (StatusCode::OK, Json(project)).into_response()
+        },
+        Err(e) => {
+            (StatusCode::INTERNAL_SERVER_ERROR, e).into_response()
+        }
+    }
 }

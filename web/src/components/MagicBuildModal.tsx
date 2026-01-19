@@ -17,51 +17,33 @@ const MagicBuildModal: React.FC<MagicBuildModalProps> = ({ onClose, onGenerate }
 
             if (mode === 'json') {
                 payload = JSON.parse(prompt);
-            } else {
-                // Simple "LLM" Simulation (Regex Parser)
-                // This mimics what an actual LLM would return based on the text.
-                const dims = prompt.match(/(\d+)x(\d+)/);
-                const width = dims ? parseInt(dims[1]) : 15;
-                const length = dims ? parseInt(dims[2]) : 20;
                 
-                const walls = [
-                    { side: "top", features: [] as any[] },
-                    { side: "right", features: [] as any[] },
-                    { side: "bottom", features: [] as any[] },
-                    { side: "left", features: [] as any[] }
-                ];
+                const res = await fetch('http://localhost:3000/interpret', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                
+                if (!res.ok) throw new Error("Failed to interpret");
+                const project = await res.json();
+                onGenerate(project);
 
-                const lower = prompt.toLowerCase();
-                if (lower.includes("window") && lower.includes("top")) walls[0].features.push({ type: "window", width: 4, position: "center" });
-                if (lower.includes("window") && lower.includes("right")) walls[1].features.push({ type: "window", width: 4, position: "center" });
-                if (lower.includes("window") && lower.includes("bottom")) walls[2].features.push({ type: "window", width: 4, position: "center" });
-                if (lower.includes("window") && lower.includes("left")) walls[3].features.push({ type: "window", width: 4, position: "center" });
+            } else {
+                // Real AI Call
+                const res = await fetch('http://localhost:3000/ai/generate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ prompt })
+                });
 
-                if (lower.includes("door") && lower.includes("top")) walls[0].features.push({ type: "door", width: 3, position: "center" });
-                if (lower.includes("door") && lower.includes("right")) walls[1].features.push({ type: "door", width: 3, position: "center" });
-                if (lower.includes("door") && lower.includes("bottom")) walls[2].features.push({ type: "door", width: 3, position: "center" });
-                if (lower.includes("door") && lower.includes("left")) walls[3].features.push({ type: "door", width: 3, position: "center" });
-
-                payload = {
-                    unit: "imperial",
-                    rooms: [{
-                        name: "Generated Room",
-                        width: width,
-                        length: length,
-                        walls: walls
-                    }]
-                };
+                if (!res.ok) {
+                    const errText = await res.text();
+                    throw new Error("AI Generation Failed: " + errText);
+                }
+                const project = await res.json();
+                onGenerate(project);
             }
-
-            const res = await fetch('http://localhost:3000/interpret', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            });
             
-            if (!res.ok) throw new Error("Failed to interpret");
-            const project = await res.json();
-            onGenerate(project);
             onClose();
 
         } catch (e) {
