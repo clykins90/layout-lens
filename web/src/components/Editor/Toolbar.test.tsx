@@ -1,7 +1,6 @@
 import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
 import { Toolbar } from './Toolbar';
-import React from 'react';
 
 describe('Toolbar', () => {
     it('renders project name', () => {

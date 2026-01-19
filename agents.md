@@ -17,6 +17,7 @@
     - `POST /interpret`: **AI Bridge**. Accepts simplified "Semantic JSON" (e.g., "Room 12x12") and calculates the vector geometry (Turtle Graphics approach) to generate a full Project struct.
 
 ### Frontend (React / Vite / Konva)
+- **Package Manager:** npm (use `npm` for all package operations, NOT pnpm or yarn)
 - **Canvas Engine:** `react-konva` for high-performance 2D vector rendering.
 - **Components:**
     - **BlueprintEditor:** Main top-down view. Handles grid snapping, wall drawing, room creation, and property editing.

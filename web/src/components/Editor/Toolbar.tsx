@@ -1,4 +1,7 @@
-import React from 'react';
+import { Sparkles, Save } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 
 interface ToolbarProps {
     projectName: string;
@@ -20,22 +23,44 @@ export const Toolbar: React.FC<ToolbarProps> = ({
     onMagicBuild
 }) => {
     return (
-        <div className="bg-white border-b px-4 py-3 flex justify-between items-center z-10 shadow-sm">
+        <div className="bg-background border-b px-4 py-3 flex justify-between items-center z-10 shadow-sm">
             <div className="flex items-center gap-4">
-                <span className="font-bold text-xl text-indigo-600">LayoutLens</span>
-                <input className="border rounded px-2 py-1 text-sm bg-gray-50" value={projectName} onChange={e => setProjectName(e.target.value)} />
-                <div className="flex bg-gray-100 rounded p-1 gap-1">
-                    <button onClick={() => setUnitSystem('imperial')} className={`px-2 py-0.5 text-xs rounded ${unitSystem === 'imperial' ? 'bg-white shadow' : 'text-gray-500'}`}>Imperial</button>
-                    <button onClick={() => setUnitSystem('metric')} className={`px-2 py-0.5 text-xs rounded ${unitSystem === 'metric' ? 'bg-white shadow' : 'text-gray-500'}`}>Metric</button>
-                </div>
-                <div className="flex bg-gray-100 rounded p-1 gap-1">
-                    <button onClick={() => setGridMode('coarse')} className={`px-2 py-0.5 text-xs rounded ${gridMode === 'coarse' ? 'bg-white shadow' : 'text-gray-500'}`}>Coarse</button>
-                    <button onClick={() => setGridMode('fine')} className={`px-2 py-0.5 text-xs rounded ${gridMode === 'fine' ? 'bg-white shadow' : 'text-gray-500'}`}>Fine</button>
-                </div>
+                <span className="font-bold text-xl text-primary">LayoutLens</span>
+                <Input
+                    className="w-40 h-8 text-sm"
+                    value={projectName}
+                    onChange={e => setProjectName(e.target.value)}
+                />
+                <ToggleGroup
+                    type="single"
+                    value={unitSystem}
+                    onValueChange={(v) => v && setUnitSystem(v as 'imperial' | 'metric')}
+                    variant="outline"
+                    size="sm"
+                >
+                    <ToggleGroupItem value="imperial">Imperial</ToggleGroupItem>
+                    <ToggleGroupItem value="metric">Metric</ToggleGroupItem>
+                </ToggleGroup>
+                <ToggleGroup
+                    type="single"
+                    value={gridMode}
+                    onValueChange={(v) => v && setGridMode(v as 'coarse' | 'fine')}
+                    variant="outline"
+                    size="sm"
+                >
+                    <ToggleGroupItem value="coarse">Coarse</ToggleGroupItem>
+                    <ToggleGroupItem value="fine">Fine</ToggleGroupItem>
+                </ToggleGroup>
             </div>
             <div className="flex gap-3">
-                <button onClick={onMagicBuild} className="bg-purple-600 text-white px-4 py-2 rounded text-sm hover:bg-purple-700 transition flex items-center gap-2">✨ Magic Build</button>
-                <button onClick={onSave} className="bg-indigo-600 text-white px-4 py-2 rounded text-sm hover:bg-indigo-700 transition shadow-sm">{isSaving ? 'Saving...' : 'Save Project'}</button>
+                <Button variant="secondary" onClick={onMagicBuild}>
+                    <Sparkles className="size-4" />
+                    Magic Build
+                </Button>
+                <Button onClick={onSave} disabled={isSaving}>
+                    <Save className="size-4" />
+                    {isSaving ? 'Saving...' : 'Save Project'}
+                </Button>
             </div>
         </div>
     );

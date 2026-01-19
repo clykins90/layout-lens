@@ -6,7 +6,6 @@ import MagicBuildModal from './MagicBuildModal';
 
 import { useProjectData } from '../hooks/useProjectData';
 import { useEditorState } from '../hooks/useEditorState';
-import type { Tool } from '../hooks/useEditorState';
 import { Toolbar } from './Editor/Toolbar';
 import { ToolPalette } from './Editor/ToolPalette';
 import { PropertiesPanel } from './Editor/PropertiesPanel';
@@ -267,7 +266,7 @@ const BlueprintEditor: React.FC = () => {
                 </div>
             </div>
 
-            {showMagicModal && <MagicBuildModal onClose={() => setShowMagicModal(false)} onGenerate={handleMagicGenerate} />} 
+            <MagicBuildModal open={showMagicModal} onOpenChange={setShowMagicModal} onGenerate={handleMagicGenerate} /> 
             {editingElementId && editingElement && <ElevationEditor element={editingElement as any} allElements={elements as any[]} onUpdate={(updated) => setElements(elements.map(el => el.id === updated.id ? updated as Element : el))} onClose={() => setEditingElementId(null)} />} 
         </div>
     );
