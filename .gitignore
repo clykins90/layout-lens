@@ -1,0 +1,17 @@
+# General
+.DS_Store
+*.swp
+*.swo
+
+# Editors
+.idea/
+.vscode/
+
+# Rust (API)
+/api/target/
+
+# Node (Web) - redundant but safe
+node_modules/
+
+# Gemini
+.gemini/
