@@ -18,7 +18,9 @@
 
 ### Frontend (React / Vite / Konva)
 - **Package Manager:** npm (use `npm` for all package operations, NOT pnpm or yarn)
+- **UI Components:** `shadcn/ui` (Radix UI primitives + Tailwind CSS).
 - **Canvas Engine:** `react-konva` for high-performance 2D vector rendering.
+- **Styling:** Tailwind CSS (Modern, utility-first styling).
 - **Components:**
     - **BlueprintEditor:** Main top-down view. Handles grid snapping, wall drawing, room creation, and property editing.
     - **ElevationEditor:** Modal view for a specific wall. Allows placing electrical and decor items on the vertical face. Supports collision detection with windows/doors from the 2D plan.
