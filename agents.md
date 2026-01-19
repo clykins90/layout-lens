@@ -82,9 +82,9 @@ cargo test
 ```
 
 ### Frontend (React)
-Tests are powered by Vitest and React Testing Library.
+Tests are powered by Vitest and React Testing Library. Test files are co-located with source files using the `.test.ts` or `.test.tsx` suffix (e.g., `utils/geometry.test.ts`, `components/Editor/Toolbar.test.tsx`).
 ```bash
 # Run all frontend tests
 cd layout-lens/web
-npm test run
+npm test -- --run
 ```

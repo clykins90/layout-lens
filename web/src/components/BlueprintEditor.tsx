@@ -11,7 +11,7 @@ import { ToolPalette } from './Editor/ToolPalette';
 import { PropertiesPanel } from './Editor/PropertiesPanel';
 
 import type { Element, ElementType, Room } from '../types';
-import { distance, getControlPoint, calculatePolygonArea, snapToGrid, getGridSize, formatLength } from '../utils/geometry';
+import { distance, getControlPoint, calculatePolygonArea, snapToGrid, getGridSize, formatLength, mergeCollinearSegments } from '../utils/geometry';
 
 const WALL_THICKNESS = 10;
 
@@ -77,16 +77,45 @@ const BlueprintEditor: React.FC = () => {
                 const start = activePoints[0];
                 const end = snapped;
                 if (start.x !== end.x || start.y !== end.y) {
-                    const newEl: Element = { 
-                        id: crypto.randomUUID(), 
-                        start, end, 
-                        thickness: WALL_THICKNESS, 
-                        element_type: tool as ElementType, 
-                        height: 400, 
-                        items: [], 
-                        curvature: 0 
-                    };
-                    setElements([...elements, newEl]);
+                    if (tool === 'wall') {
+                        const walls = elements.filter(el => el.element_type === 'wall' && el.curvature === 0);
+                        let merged = false;
+                        for (const wall of walls) {
+                            const mergeResult = mergeCollinearSegments(wall.start, wall.end, start, end);
+                            if (mergeResult) {
+                                setElements(elements.map(el =>
+                                    el.id === wall.id
+                                        ? { ...el, start: mergeResult.start, end: mergeResult.end }
+                                        : el
+                                ));
+                                merged = true;
+                                break;
+                            }
+                        }
+                        if (!merged) {
+                            const newEl: Element = {
+                                id: crypto.randomUUID(),
+                                start, end,
+                                thickness: WALL_THICKNESS,
+                                element_type: 'wall',
+                                height: 400,
+                                items: [],
+                                curvature: 0
+                            };
+                            setElements([...elements, newEl]);
+                        }
+                    } else {
+                        const newEl: Element = {
+                            id: crypto.randomUUID(),
+                            start, end,
+                            thickness: WALL_THICKNESS,
+                            element_type: tool as ElementType,
+                            height: 400,
+                            items: [],
+                            curvature: 0
+                        };
+                        setElements([...elements, newEl]);
+                    }
                     if (tool === 'wall' || tool === 'opening') setActivePoints([end]); else setActivePoints([]);
                 }
             }

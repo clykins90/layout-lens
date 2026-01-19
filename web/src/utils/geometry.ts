@@ -84,3 +84,43 @@ export const snapToGrid = (pos: Point, gridSize: number) => {
       y: Math.round(pos.y / gridSize) * gridSize,
     };
 };
+
+export const pointsEqual = (p1: Point, p2: Point, tolerance = 1) => {
+    return Math.abs(p1.x - p2.x) < tolerance && Math.abs(p1.y - p2.y) < tolerance;
+};
+
+export const areCollinear = (p1: Point, p2: Point, p3: Point, tolerance = 1) => {
+    const v1 = { x: p2.x - p1.x, y: p2.y - p1.y };
+    const v2 = { x: p3.x - p1.x, y: p3.y - p1.y };
+    const cross = v1.x * v2.y - v1.y * v2.x;
+    return Math.abs(cross) < tolerance;
+};
+
+export const mergeCollinearSegments = (
+    existingStart: Point,
+    existingEnd: Point,
+    newStart: Point,
+    newEnd: Point
+): { start: Point; end: Point } | null => {
+    if (!areCollinear(existingStart, existingEnd, newStart) ||
+        !areCollinear(existingStart, existingEnd, newEnd)) {
+        return null;
+    }
+
+    const connectsAtExistingEnd = pointsEqual(existingEnd, newStart);
+    const connectsAtExistingStart = pointsEqual(existingStart, newEnd);
+    const connectsAtExistingEndReversed = pointsEqual(existingEnd, newEnd);
+    const connectsAtExistingStartReversed = pointsEqual(existingStart, newStart);
+
+    if (connectsAtExistingEnd) {
+        return { start: existingStart, end: newEnd };
+    } else if (connectsAtExistingStart) {
+        return { start: newStart, end: existingEnd };
+    } else if (connectsAtExistingEndReversed) {
+        return { start: existingStart, end: newStart };
+    } else if (connectsAtExistingStartReversed) {
+        return { start: newEnd, end: existingEnd };
+    }
+
+    return null;
+};
