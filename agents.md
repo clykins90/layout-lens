@@ -39,8 +39,32 @@
     - The system translates this Natural Language -> Semantic JSON -> Coordinate Geometry.
 
 ## 📁 File Structure
-- `api/src/main.rs`: Entire backend logic (Models + Routes + Geometry Engine).
-- `web/src/components/BlueprintEditor.tsx`: Core 2D logic.
-- `web/src/components/ElevationEditor.tsx`: Vertical view logic.
-- `web/src/components/MagicBuildModal.tsx`: AI input interface.
-- `semantic_protocol.md`: Spec for the AI JSON interface.
+- **Backend (`api/src/`)**
+    - `main.rs`: Entry point and server configuration.
+    - `models.rs`: Data structs (`Project`, `Element`, `Room`).
+    - `handlers.rs`: HTTP request handlers.
+    - `services.rs`: Business logic (geometry engine, semantic interpretation).
+    - `routes.rs`: Route definitions.
+- **Frontend (`web/src/`)**
+    - `components/BlueprintEditor.tsx`: Main canvas composition.
+    - `components/Editor/`: Sub-components (Toolbar, Palette, Properties).
+    - `hooks/`: Custom hooks (`useProjectData`, `useEditorState`).
+    - `utils/`: Geometry and formatting helpers.
+
+## 🧱 Maintainability Guidelines
+
+To preserve code quality, strict adherence to the following separation of concerns is required:
+
+### Backend (Rust)
+1.  **Models (`models.rs`)**: Pure data structures only. No logic.
+2.  **Services (`services.rs`)**: Pure business logic (e.g., geometry math, AI interpretation). **Must be testable in isolation.**
+3.  **Handlers (`handlers.rs`)**: Web layer only. Extract data from `Json`/`Path`, call a Service, and return a Response. **No complex logic here.**
+4.  **State (`state.rs`)**: Global state management.
+
+### Frontend (React)
+1.  **Hooks (`hooks/`)**: All stateful logic (selection, mouse position, API calls) must reside here. **View components should be logic-light.**
+2.  **Utils (`utils/`)**: All math and formatting (unit conversion, intersection checks) must be pure functions in `utils/`.
+3.  **API (`api/`)**: All `fetch` calls must be encapsulated here. Components should never call `fetch` directly.
+4.  **Components**:
+    - **Container/Page** (e.g., `BlueprintEditor`): Composes hooks and sub-components.
+    - **Presentational** (e.g., `Toolbar`): Receives data/callbacks via props. Minimal internal state.
