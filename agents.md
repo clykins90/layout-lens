@@ -68,3 +68,22 @@ To preserve code quality, strict adherence to the following separation of concer
 4.  **Components**:
     - **Container/Page** (e.g., `BlueprintEditor`): Composes hooks and sub-components.
     - **Presentational** (e.g., `Toolbar`): Receives data/callbacks via props. Minimal internal state.
+
+## 🧪 Testing
+
+### Backend (Rust)
+Unit and integration tests are located in `api/src/services.rs` and `api/tests/`.
+```bash
+# Run all backend tests
+cd layout-lens/api
+export PATH="$HOME/.cargo/bin:$PATH" # Ensure cargo is in PATH
+cargo test
+```
+
+### Frontend (React)
+Tests are powered by Vitest and React Testing Library.
+```bash
+# Run all frontend tests
+cd layout-lens/web
+npm test run
+```

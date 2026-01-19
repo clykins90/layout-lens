@@ -112,3 +112,149 @@ pub fn interpret_semantic_logic(payload: SemanticProject) -> Project {
     
     project
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::models::{SemanticRoom, SemanticWall, SemanticFeature};
+    use serde_json::json;
+
+    #[test]
+    fn test_interpret_simple_room() {
+        let payload = SemanticProject {
+            unit: "imperial".to_string(),
+            rooms: vec![SemanticRoom {
+                name: "Test Room".to_string(),
+                width: 10.0,
+                length: 10.0,
+                walls: vec![],
+            }],
+        };
+
+        let project = interpret_semantic_logic(payload);
+        
+        // 10x10 room = 4 walls. 
+        // Imperial 1 unit = 50px. 10 units = 500px.
+        // Perimeter = 500 * 4 = 2000px total length roughly.
+        // Actually 4 distinct walls.
+        
+        assert_eq!(project.rooms.len(), 1);
+        assert_eq!(project.elements.len(), 4); // 4 walls
+
+        let room = &project.rooms[0];
+        assert_eq!(room.name, "Test Room");
+    }
+
+    #[test]
+    fn test_interpret_room_with_window() {
+        let payload = SemanticProject {
+            unit: "imperial".to_string(),
+            rooms: vec![SemanticRoom {
+                name: "Window Room".to_string(),
+                width: 10.0,
+                length: 10.0,
+                walls: vec![SemanticWall {
+                    side: "top".to_string(),
+                    features: vec![SemanticFeature {
+                        feature_type: "window".to_string(),
+                        width: 4.0,
+                        height: 3.0,
+                        position: json!("center"),
+                    }],
+                }],
+            }],
+        };
+
+        let project = interpret_semantic_logic(payload);
+        
+        // Top wall should be split: Wall -> Window -> Wall.
+        // Plus Right, Bottom, Left (3 walls).
+        // Total elements = 3 + 3 = 6.
+        
+        assert_eq!(project.elements.len(), 6);
+        
+        let windows: Vec<_> = project.elements.iter().filter(|e| e.element_type == "window").collect();
+        assert_eq!(windows.len(), 1);
+        assert_eq!(windows[0].thickness, 10.0);
+    }
+
+    #[test]
+    fn test_interpret_metric_vs_imperial() {
+        // Metric: 1 unit = 164.0 px
+        let payload_metric = SemanticProject {
+            unit: "metric".to_string(),
+            rooms: vec![SemanticRoom {
+                name: "Metric Room".to_string(),
+                width: 1.0,
+                length: 1.0,
+                walls: vec![],
+            }],
+        };
+        let project_metric = interpret_semantic_logic(payload_metric);
+        // Room width should be 164.0
+        // Calculate width from points: top-left to top-right
+        let r_metric = &project_metric.rooms[0];
+        let width_metric = r_metric.points[1].x - r_metric.points[0].x;
+        assert!((width_metric - 164.0).abs() < 0.001);
+
+        // Imperial: 1 unit = 50.0 px
+        let payload_imperial = SemanticProject {
+            unit: "imperial".to_string(),
+            rooms: vec![SemanticRoom {
+                name: "Imperial Room".to_string(),
+                width: 1.0,
+                length: 1.0,
+                walls: vec![],
+            }],
+        };
+        let project_imperial = interpret_semantic_logic(payload_imperial);
+        let r_imperial = &project_imperial.rooms[0];
+        let width_imperial = r_imperial.points[1].x - r_imperial.points[0].x;
+        assert!((width_imperial - 50.0).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_wall_connectivity() {
+        let payload = SemanticProject {
+            unit: "imperial".to_string(),
+            rooms: vec![SemanticRoom {
+                name: "Connected Room".to_string(),
+                width: 10.0,
+                length: 10.0,
+                walls: vec![],
+            }],
+        };
+        let project = interpret_semantic_logic(payload);
+        
+        // We expect 4 walls.
+        // Wall 0 End should == Wall 1 Start
+        // Wall 1 End should == Wall 2 Start
+        // Wall 2 End should == Wall 3 Start
+        // Wall 3 End should == Wall 0 Start (Closed loop)
+        
+        // Note: The `interpret_semantic_logic` function pushes elements to `project.elements`.
+        // The order of insertion in the loop is Top, Right, Bottom, Left.
+        
+        let elements = &project.elements;
+        assert_eq!(elements.len(), 4);
+
+        // Allow small float error
+        let epsilon = 0.001;
+
+        // Top -> Right
+        assert!((elements[0].end.x - elements[1].start.x).abs() < epsilon);
+        assert!((elements[0].end.y - elements[1].start.y).abs() < epsilon);
+
+        // Right -> Bottom
+        assert!((elements[1].end.x - elements[2].start.x).abs() < epsilon);
+        assert!((elements[1].end.y - elements[2].start.y).abs() < epsilon);
+
+        // Bottom -> Left
+        assert!((elements[2].end.x - elements[3].start.x).abs() < epsilon);
+        assert!((elements[2].end.y - elements[3].start.y).abs() < epsilon);
+
+        // Left -> Top
+        assert!((elements[3].end.x - elements[0].start.x).abs() < epsilon);
+        assert!((elements[3].end.y - elements[0].start.y).abs() < epsilon);
+    }
+}
