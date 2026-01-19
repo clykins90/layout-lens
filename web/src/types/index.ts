@@ -23,14 +23,32 @@ export interface Element {
     height: number;
     curvature: number; 
     items: VerticalItem[];
+    paint?: PaintColor;
 }
   
+export interface PaintColor {
+    manufacturer: string;
+    name: string;
+    code: string;
+    hex: string;
+}
+
+export interface Flooring {
+    flooring_type: string;
+    manufacturer?: string;
+    name?: string;
+    code?: string;
+    hex?: string;
+}
+
 export interface Room {
     id: string;
     name: string;
     points: Point[];
     label_pos: Point;
     wallIds: string[]; 
+    paint?: PaintColor;
+    flooring?: Flooring;
 }
   
 export interface Project {

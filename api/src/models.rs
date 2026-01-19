@@ -38,6 +38,25 @@ pub struct Element {
     pub curvature: f32, 
     #[serde(default)]
     pub items: Vec<VerticalItem>,
+    #[serde(default)]
+    pub paint: Option<PaintColor>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct PaintColor {
+    pub manufacturer: String,
+    pub name: String,
+    pub code: String,
+    pub hex: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct Flooring {
+    pub flooring_type: String, // "carpet", "hardwood", "tile", "rug"
+    pub manufacturer: Option<String>,
+    pub name: Option<String>,
+    pub code: Option<String>,
+    pub hex: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -48,6 +67,10 @@ pub struct Room {
     pub label_pos: Point,
     #[serde(rename = "wallIds")]
     pub wall_ids: Vec<String>,
+    #[serde(default)]
+    pub paint: Option<PaintColor>,
+    #[serde(default)]
+    pub flooring: Option<Flooring>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]

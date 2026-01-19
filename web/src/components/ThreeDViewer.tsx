@@ -112,13 +112,15 @@ const WallMesh = ({ element }: { element: Element }) => {
   const midX = (start.x + end.x) / 2;
   const midZ = (start.y + end.y) / 2;
 
+  const color = element.paint?.hex || "#e2e8f0";
+
   return (
     <mesh
       position={[midX * SCALE, (height || WALL_HEIGHT_DEFAULT) * SCALE / 2, midZ * SCALE]}
       rotation={[0, angle, 0]}
     >
       <boxGeometry args={[length * SCALE, (height || WALL_HEIGHT_DEFAULT) * SCALE, thickness * SCALE]} />
-      <meshStandardMaterial color="#e2e8f0" roughness={0.8} />
+      <meshStandardMaterial color={color} roughness={0.8} />
     </mesh>
   );
 };
@@ -136,10 +138,12 @@ const RoomFloor = ({ room }: { room: Room }) => {
     return s;
   }, [room.points]);
 
+  const floorColor = room.flooring?.hex || room.paint?.hex || "#cbd5e1";
+
   return (
     <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.1, 0]}>
       <shapeGeometry args={[shape]} />
-      <meshStandardMaterial color="#cbd5e1" side={THREE.DoubleSide} />
+      <meshStandardMaterial color={floorColor} side={THREE.DoubleSide} />
     </mesh>
   );
 };

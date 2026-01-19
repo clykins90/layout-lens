@@ -44,7 +44,7 @@ const BlueprintEditor: React.FC = () => {
 
     // Derived State
     const selectedElement = elements.find(el => el.id === selectedId);
-    // const selectedRoom = rooms.find(r => r.id === selectedId); // Unused for now
+    const selectedRoom = rooms.find(r => r.id === selectedId);
     const editingElement = elements.find(el => el.id === editingElementId);
 
     // --- Interaction Handlers ---
@@ -257,19 +257,53 @@ const BlueprintEditor: React.FC = () => {
                         >
                             <Layer>{renderGrid()}</Layer>
                             <Layer>
-                                {rooms.map(room => (
-                                    <Group key={room.id} onClick={() => tool === 'select' && setSelectedId(room.id)}>
-                                        <Line points={room.points.flatMap(p => [p.x, p.y])} closed fill={selectedId === room.id ? "rgba(99, 102, 241, 0.2)" : "rgba(200, 200, 200, 0.1)"} />
-                                        <Text x={room.label_pos.x - 50} y={room.label_pos.y} text={`${room.name}\n${calculatePolygonArea(room.points, unitSystem)}`} align="center" width={100} fontSize={14} fill="#555" />
-                                    </Group>
-                                ))}
+                                {rooms.map(room => {
+                                    const isSelected = selectedId === room.id;
+                                    let fillColor = isSelected ? "rgba(99, 102, 241, 0.2)" : "rgba(200, 200, 200, 0.1)";
+                                    
+                                    if (room.flooring?.hex) {
+                                        fillColor = room.flooring.hex;
+                                    } else if (room.paint?.hex) {
+                                        fillColor = room.paint.hex;
+                                    }
+
+                                    return (
+                                        <Group key={room.id} onClick={() => tool === 'select' && setSelectedId(room.id)}>
+                                            <Line 
+                                                points={room.points.flatMap(p => [p.x, p.y])} 
+                                                closed 
+                                                fill={fillColor} 
+                                                opacity={isSelected ? 0.6 : 0.4}
+                                                stroke={isSelected ? "#4f46e5" : "transparent"}
+                                                strokeWidth={2}
+                                            />
+                                            <Text 
+                                                x={room.label_pos.x - 50} 
+                                                y={room.label_pos.y} 
+                                                text={`${room.name}\n${calculatePolygonArea(room.points, unitSystem)}`} 
+                                                align="center" 
+                                                width={100} 
+                                                fontSize={14} 
+                                                fill={fillColor === "rgba(200, 200, 200, 0.1)" ? "#555" : "#333"} 
+                                                fontStyle="bold"
+                                            />
+                                        </Group>
+                                    );
+                                })}
                             </Layer>
                             <Layer>
                                 {elements.map(el => {
                                     let color = '#333'; let width = el.thickness; let dash: number[] = [];
                                     if (el.element_type === 'window') { color = '#60a5fa'; width = 6; }
                                     else if (el.element_type === 'door') { color = '#92400e'; width = 8; }
-                                    else if (el.element_type === 'opening') { color = '#d1d5db'; width = 6; dash = [10, 10]; } 
+                                    else if (el.element_type === 'opening') { color = '#d1d5db'; width = 6; dash = [10, 10]; }
+                                    
+                                    // Override wall color if painted
+                                    if (el.element_type === 'wall' && el.paint?.hex) {
+                                        color = el.paint.hex;
+                                        // Make painted walls slightly thicker to be visible? Or just trust the color.
+                                    }
+
                                     const isSelected = selectedId === el.id;
                                     const midX = (el.start.x + el.end.x) / 2;
                                     const midY = (el.start.y + el.end.y) / 2;
@@ -290,10 +324,13 @@ const BlueprintEditor: React.FC = () => {
                     
                     <PropertiesPanel 
                         selectedElement={selectedElement}
+                        selectedRoom={selectedRoom}
                         unitSystem={unitSystem}
                         onUpdateLength={updateElementLength}
                         onUpdateCurvature={(val) => setElements(elements.map(el => el.id === selectedId ? {...el, curvature: val} : el))}
                         onEditVertical={() => selectedId && setEditingElementId(selectedId)}
+                        onUpdateRoom={(updatedRoom) => setRooms(rooms.map(r => r.id === updatedRoom.id ? updatedRoom : r))}
+                        onUpdateElement={(updatedElement) => setElements(elements.map(el => el.id === updatedElement.id ? updatedElement : el))}
                     />
                 </div>
             </div>

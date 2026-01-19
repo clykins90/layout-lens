@@ -74,7 +74,7 @@ pub fn interpret_semantic_logic(payload: SemanticProject) -> Project {
                     let w_end = Point { x: start.x + ux * s, y: start.y + uy * s };
                     let wid = Uuid::new_v4().to_string();
                     project.elements.push(Element {
-                        id: wid.clone(), start: w_start, end: w_end, thickness: 10.0, element_type: "wall".to_string(), height: 400.0, curvature: 0.0, items: vec![]
+                        id: wid.clone(), start: w_start, end: w_end, thickness: 10.0, element_type: "wall".to_string(), height: 400.0, curvature: 0.0, items: vec![], paint: None
                     });
                     wall_ids.push(wid);
                 }
@@ -82,7 +82,7 @@ pub fn interpret_semantic_logic(payload: SemanticProject) -> Project {
                 let f_end = Point { x: start.x + ux * e, y: start.y + uy * e };
                 let fid = Uuid::new_v4().to_string();
                 project.elements.push(Element {
-                    id: fid.clone(), start: f_start, end: f_end, thickness: 10.0, element_type: f_type, height: 400.0, curvature: 0.0, items: vec![]
+                    id: fid.clone(), start: f_start, end: f_end, thickness: 10.0, element_type: f_type, height: 400.0, curvature: 0.0, items: vec![], paint: None
                 });
                 wall_ids.push(fid);
                 cursor = e;
@@ -93,7 +93,7 @@ pub fn interpret_semantic_logic(payload: SemanticProject) -> Project {
                 let w_end = end.clone();
                 let wid = Uuid::new_v4().to_string();
                 project.elements.push(Element {
-                    id: wid.clone(), start: w_start, end: w_end, thickness: 10.0, element_type: "wall".to_string(), height: 400.0, curvature: 0.0, items: vec![]
+                    id: wid.clone(), start: w_start, end: w_end, thickness: 10.0, element_type: "wall".to_string(), height: 400.0, curvature: 0.0, items: vec![], paint: None
                 });
                 wall_ids.push(wid);
             }
@@ -105,6 +105,8 @@ pub fn interpret_semantic_logic(payload: SemanticProject) -> Project {
             points: room_points,
             label_pos: Point { x: start_x + r_width/2.0, y: start_y + r_length/2.0 },
             wall_ids,
+            paint: None,
+            flooring: None,
         });
 
         offset_x += r_width + 100.0; 
