@@ -1,4 +1,4 @@
-import type { Point } from '../types';
+import type { Point, Element } from '../types';
 
 export const distance = (p1: Point, p2: Point) => {
     return Math.sqrt(Math.pow(p2.x - p1.x, 2) + Math.pow(p2.y - p1.y, 2));
@@ -120,6 +120,104 @@ export const mergeCollinearSegments = (
         return { start: existingStart, end: newStart };
     } else if (connectsAtExistingStartReversed) {
         return { start: newEnd, end: existingEnd };
+    }
+
+    return null;
+};
+
+const subtractPoints = (p1: Point, p2: Point): Point => ({ x: p1.x - p2.x, y: p1.y - p2.y });
+const crossProduct = (v1: Point, v2: Point): number => v1.x * v2.y - v1.y * v2.x;
+const dotProduct = (v1: Point, v2: Point): number => v1.x * v2.x + v1.y * v2.y;
+
+export const findEnclosingRoom = (elements: Element[], clickPoint: Point): { points: Point[], wallIds: string[] } | null => {
+    const walls = elements.filter(el => ['wall', 'window', 'door', 'opening'].includes(el.element_type));
+    
+    let closestWall: Element | null = null;
+    let closestDist = Infinity;
+    let startEndpointIndex = 0; 
+
+    for (const wall of walls) {
+        const minY = Math.min(wall.start.y, wall.end.y);
+        const maxY = Math.max(wall.start.y, wall.end.y);
+        const maxX = Math.max(wall.start.x, wall.end.x);
+
+        if (clickPoint.y < minY || clickPoint.y > maxY || clickPoint.x > maxX) continue;
+
+        const s = subtractPoints(wall.end, wall.start);
+        const r = { x: 1, y: 0 };
+        const qp = subtractPoints(wall.start, clickPoint);
+        const rXs = crossProduct(r, s);
+
+        if (Math.abs(rXs) < 1e-5) continue;
+
+        const t = crossProduct(qp, s) / rXs;
+        const u = crossProduct(qp, r) / rXs;
+
+        if (t >= 0 && u >= 0 && u <= 1) {
+            if (t < closestDist) {
+                closestDist = t;
+                closestWall = wall;
+                startEndpointIndex = rXs > 0 ? 0 : 1; 
+            }
+        }
+    }
+
+    if (!closestWall) return null;
+
+    const pathPoints: Point[] = [];
+    const pathWallIds: string[] = [];
+    let currentWall = closestWall;
+    let currentTarget = startEndpointIndex === 1 ? currentWall.end : currentWall.start;
+    let currentSource = startEndpointIndex === 1 ? currentWall.start : currentWall.end;
+
+    pathPoints.push(currentSource);
+    pathWallIds.push(currentWall.id);
+
+    const maxSteps = 100;
+    for (let step = 0; step < maxSteps; step++) {
+        pathPoints.push(currentTarget);
+        
+        if (pointsEqual(currentTarget, pathPoints[0])) {
+            return { points: pathPoints.slice(0, -1), wallIds: pathWallIds };
+        }
+
+        const connectedWalls = walls.filter(w => 
+            w.id !== currentWall!.id && 
+            (pointsEqual(w.start, currentTarget) || pointsEqual(w.end, currentTarget))
+        );
+
+        if (connectedWalls.length === 0) return null;
+
+        const vIn = subtractPoints(currentTarget, currentSource);
+        let bestWall: Element | null = null;
+        let bestAngle = -Infinity;
+        let nextTarget: Point | null = null;
+
+        for (const nextW of connectedWalls) {
+            const isStart = pointsEqual(nextW.start, currentTarget);
+            const pNext = isStart ? nextW.end : nextW.start;
+            const vOut = subtractPoints(pNext, currentTarget);
+
+            const dot = dotProduct(vIn, vOut);
+            const det = crossProduct(vIn, vOut);
+            let angle = Math.atan2(det, dot);
+            
+            if (angle > bestAngle) {
+                bestAngle = angle;
+                bestWall = nextW;
+                nextTarget = pNext;
+            }
+        }
+        
+        if (bestWall && nextTarget) {
+            if (bestWall.id === currentWall!.id) return null; 
+            currentWall = bestWall;
+            currentSource = currentTarget;
+            currentTarget = nextTarget;
+            pathWallIds.push(currentWall.id);
+        } else {
+            return null;
+        }
     }
 
     return null;

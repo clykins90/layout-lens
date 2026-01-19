@@ -1,4 +1,4 @@
-import { MousePointer2, RectangleHorizontal, PanelTop, DoorOpen, Square, Ruler } from 'lucide-react';
+import { MousePointer2, RectangleHorizontal, PanelTop, DoorOpen, Square, Tag } from 'lucide-react';
 import type { Tool } from '../../hooks/useEditorState';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 
@@ -13,7 +13,7 @@ const tools = [
     { id: 'window', icon: PanelTop, name: 'Window' },
     { id: 'door', icon: DoorOpen, name: 'Door' },
     { id: 'opening', icon: Square, name: 'Opening' },
-    { id: 'room', icon: Ruler, name: 'Room' },
+    { id: 'room', icon: Tag, name: 'Label Room' },
 ] as const;
 
 export const ToolPalette: React.FC<ToolPaletteProps> = ({ tool, setTool }) => {

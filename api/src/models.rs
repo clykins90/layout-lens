@@ -66,6 +66,7 @@ pub struct Room {
     pub points: Vec<Point>,
     pub label_pos: Point,
     #[serde(rename = "wallIds")]
+    /// List of element IDs that form the room boundary (can include walls, windows, doors, openings)
     pub wall_ids: Vec<String>,
     #[serde(default)]
     pub paint: Option<PaintColor>,

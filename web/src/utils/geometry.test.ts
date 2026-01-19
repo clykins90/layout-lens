@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { distance, getControlPoint, calculatePolygonArea, doSegmentsOverlap, formatLength, pointsEqual, areCollinear, mergeCollinearSegments } from './geometry';
+import { distance, getControlPoint, calculatePolygonArea, doSegmentsOverlap, formatLength, pointsEqual, areCollinear, mergeCollinearSegments, findEnclosingRoom } from './geometry';
+import type { Element } from '../types';
 
 describe('Geometry Utils', () => {
   it('calculates distance correctly', () => {
@@ -180,6 +181,59 @@ describe('Geometry Utils', () => {
         {x: 150, y: 0}, {x: 100, y: 0}
       );
       expect(result).toEqual({start: {x: 0, y: 0}, end: {x: 150, y: 0}});
+    });
+  });
+
+  describe('findEnclosingRoom', () => {
+    it('detects a simple rectangular room', () => {
+      const elements: Element[] = [
+        { id: 'w1', start: { x: 0, y: 0 }, end: { x: 100, y: 0 }, element_type: 'wall', thickness: 10, height: 400, items: [], curvature: 0 },
+        { id: 'w2', start: { x: 100, y: 0 }, end: { x: 100, y: 100 }, element_type: 'wall', thickness: 10, height: 400, items: [], curvature: 0 },
+        { id: 'w3', start: { x: 100, y: 100 }, end: { x: 0, y: 100 }, element_type: 'wall', thickness: 10, height: 400, items: [], curvature: 0 },
+        { id: 'w4', start: { x: 0, y: 100 }, end: { x: 0, y: 0 }, element_type: 'wall', thickness: 10, height: 400, items: [], curvature: 0 },
+      ];
+      
+      const result = findEnclosingRoom(elements, { x: 50, y: 50 });
+      expect(result).not.toBeNull();
+      expect(result!.wallIds).toHaveLength(4);
+      expect(result!.points).toHaveLength(4);
+    });
+
+    it('detects a room with mixed element types (wall, window, door, opening)', () => {
+      const elements: Element[] = [
+        { id: 'w1', start: { x: 0, y: 0 }, end: { x: 100, y: 0 }, element_type: 'wall', thickness: 10, height: 400, items: [], curvature: 0 },
+        { id: 'd1', start: { x: 100, y: 0 }, end: { x: 100, y: 100 }, element_type: 'door', thickness: 10, height: 400, items: [], curvature: 0 }, // Door
+        { id: 'win1', start: { x: 100, y: 100 }, end: { x: 0, y: 100 }, element_type: 'window', thickness: 10, height: 400, items: [], curvature: 0 }, // Window
+        { id: 'op1', start: { x: 0, y: 100 }, end: { x: 0, y: 0 }, element_type: 'opening', thickness: 10, height: 400, items: [], curvature: 0 }, // Opening
+      ];
+      
+      const result = findEnclosingRoom(elements, { x: 50, y: 50 });
+      expect(result).not.toBeNull();
+      expect(result!.wallIds).toHaveLength(4);
+    });
+
+    it('returns null if click is outside', () => {
+      const elements: Element[] = [
+        { id: 'w1', start: { x: 0, y: 0 }, end: { x: 100, y: 0 }, element_type: 'wall', thickness: 10, height: 400, items: [], curvature: 0 },
+        { id: 'w2', start: { x: 100, y: 0 }, end: { x: 100, y: 100 }, element_type: 'wall', thickness: 10, height: 400, items: [], curvature: 0 },
+        { id: 'w3', start: { x: 100, y: 100 }, end: { x: 0, y: 100 }, element_type: 'wall', thickness: 10, height: 400, items: [], curvature: 0 },
+        { id: 'w4', start: { x: 0, y: 100 }, end: { x: 0, y: 0 }, element_type: 'wall', thickness: 10, height: 400, items: [], curvature: 0 },
+      ];
+      
+      const result = findEnclosingRoom(elements, { x: 200, y: 50 });
+      expect(result).toBeNull();
+    });
+
+    it('returns null for an open loop', () => {
+      const elements: Element[] = [
+        { id: 'w1', start: { x: 0, y: 0 }, end: { x: 100, y: 0 }, element_type: 'wall', thickness: 10, height: 400, items: [], curvature: 0 },
+        { id: 'w2', start: { x: 100, y: 0 }, end: { x: 100, y: 100 }, element_type: 'wall', thickness: 10, height: 400, items: [], curvature: 0 },
+        { id: 'w3', start: { x: 100, y: 100 }, end: { x: 0, y: 100 }, element_type: 'wall', thickness: 10, height: 400, items: [], curvature: 0 },
+        // Missing closing wall
+      ];
+      
+      const result = findEnclosingRoom(elements, { x: 50, y: 50 });
+      expect(result).toBeNull();
     });
   });
 });

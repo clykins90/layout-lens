@@ -49,6 +49,7 @@ export interface Room {
     wallIds: string[]; 
     paint?: PaintColor;
     flooring?: Flooring;
+    isValid?: boolean;
 }
   
 export interface Project {

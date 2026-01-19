@@ -12,7 +12,7 @@ import { ToolPalette } from './Editor/ToolPalette';
 import { PropertiesPanel } from './Editor/PropertiesPanel';
 
 import type { Element, ElementType, Room } from '../types';
-import { distance, getControlPoint, calculatePolygonArea, snapToGrid, getGridSize, formatLength, mergeCollinearSegments } from '../utils/geometry';
+import { distance, getControlPoint, calculatePolygonArea, snapToGrid, getGridSize, formatLength, mergeCollinearSegments, findEnclosingRoom } from '../utils/geometry';
 
 const WALL_THICKNESS = 10;
 
@@ -46,6 +46,38 @@ const BlueprintEditor: React.FC = () => {
     const selectedElement = elements.find(el => el.id === selectedId);
     const selectedRoom = rooms.find(r => r.id === selectedId);
     const editingElement = elements.find(el => el.id === editingElementId);
+
+    // --- Core Logic: Update Elements & Auto-Recalculate Rooms ---
+
+    const updateElements = (newElements: Element[]) => {
+        // 1. Recalculate all existing rooms based on new geometry
+        const updatedRooms = rooms.map(room => {
+            // Use the room's current label position as the seed point
+            const result = findEnclosingRoom(newElements, room.label_pos);
+            
+            if (result) {
+                // Room is still valid (closed loop found around seed)
+                const cx = result.points.reduce((acc, p) => acc + p.x, 0) / result.points.length;
+                const cy = result.points.reduce((acc, p) => acc + p.y, 0) / result.points.length;
+                return {
+                    ...room,
+                    points: result.points,
+                    wallIds: result.wallIds,
+                    label_pos: { x: cx, y: cy }, // Update label to new centroid
+                    isValid: true
+                };
+            } else {
+                // Room is broken (no closed loop found)
+                return {
+                    ...room,
+                    isValid: false
+                };
+            }
+        });
+
+        setElements(newElements);
+        setRooms(updatedRooms);
+    };
 
     // --- Interaction Handlers ---
 
@@ -85,7 +117,7 @@ const BlueprintEditor: React.FC = () => {
                         for (const wall of walls) {
                             const mergeResult = mergeCollinearSegments(wall.start, wall.end, start, end);
                             if (mergeResult) {
-                                setElements(elements.map(el =>
+                                updateElements(elements.map(el =>
                                     el.id === wall.id
                                         ? { ...el, start: mergeResult.start, end: mergeResult.end }
                                         : el
@@ -104,7 +136,7 @@ const BlueprintEditor: React.FC = () => {
                                 items: [],
                                 curvature: 0
                             };
-                            setElements([...elements, newEl]);
+                            updateElements([...elements, newEl]);
                         }
                     } else {
                         const newEl: Element = {
@@ -116,36 +148,35 @@ const BlueprintEditor: React.FC = () => {
                             items: [],
                             curvature: 0
                         };
-                        setElements([...elements, newEl]);
+                        updateElements([...elements, newEl]);
                     }
                     if (tool === 'wall' || tool === 'opening') setActivePoints([end]); else setActivePoints([]);
                 }
             }
         } else if (tool === 'room') {
-            if (activePoints.length > 2) {
-                const first = activePoints[0];
-                if (distance(snapped, first) < 20) {
-                    const name = prompt("Enter room name:", "Living Room") || "Room";
-                    const cx = activePoints.reduce((acc, p) => acc + p.x, 0) / activePoints.length;
-                    const cy = activePoints.reduce((acc, p) => acc + p.y, 0) / activePoints.length;
-                    const newWalls: Element[] = [];
-                    const wallIds: string[] = [];
-                    for (let i = 0; i < activePoints.length; i++) {
-                        const p1 = activePoints[i];
-                        const p2 = activePoints[(i + 1) % activePoints.length];
-                        const wid = crypto.randomUUID();
-                        wallIds.push(wid);
-                        newWalls.push({ id: wid, start: p1, end: p2, thickness: WALL_THICKNESS, element_type: 'wall', height: 400, items: [], curvature: 0 });
-                    }
-                    const newRoom: Room = { id: crypto.randomUUID(), name, points: activePoints, label_pos: { x: cx, y: cy }, wallIds };
-                    setElements([...elements, ...newWalls]);
-                    setRooms([...rooms, newRoom]);
-                    setActivePoints([]);
-                    return;
-                }
+            const result = findEnclosingRoom(elements, pointer);
+            
+            if (result) {
+                const name = prompt("Enter room name:", "Living Room") || "Room";
+                const cx = result.points.reduce((acc, p) => acc + p.x, 0) / result.points.length;
+                const cy = result.points.reduce((acc, p) => acc + p.y, 0) / result.points.length;
+                
+                const newRoom: Room = { 
+                    id: crypto.randomUUID(), 
+                    name, 
+                    points: result.points, 
+                    label_pos: { x: cx, y: cy }, 
+                    wallIds: result.wallIds,
+                    isValid: true
+                };
+                
+                setRooms([...rooms, newRoom]);
+                // No new walls created, so no need to call updateElements() here, just setRooms is fine
+                // because we just added a room, existing rooms shouldn't change validity.
+                setTool('select');
+            } else {
+                alert("No enclosed room detected. Please ensure walls form a closed loop around the click point.");
             }
-            if (activePoints.length > 0 && distance(snapped, activePoints[activePoints.length - 1]) < 1) return;
-            setActivePoints([...activePoints, snapped]);
         }
     };
 
@@ -164,7 +195,7 @@ const BlueprintEditor: React.FC = () => {
         const uX = dx / currentLen;
         const uY = dy / currentLen;
         const newEnd = { x: selectedElement.start.x + uX * totalPixels, y: selectedElement.start.y + uY * totalPixels };
-        setElements(elements.map(el => el.id === selectedElement.id ? { ...el, end: newEnd } : el));
+        updateElements(elements.map(el => el.id === selectedElement.id ? { ...el, end: newEnd } : el));
     };
 
     const handleMagicGenerate = (generatedProject: any) => {
@@ -178,10 +209,13 @@ const BlueprintEditor: React.FC = () => {
             start: { x: el.start.x + offsetX, y: el.start.y },
             end: { x: el.end.x + offsetX, y: el.end.y }
         }));
+        // For magic generate, we trust the generator or run a recalc pass if needed.
+        // Let's just merge and set for now.
         const newRooms = generatedProject.rooms.map((r: Room) => ({
             ...r,
             points: r.points.map(p => ({ x: p.x + offsetX, y: p.y })),
             label_pos: { x: r.label_pos.x + offsetX, y: r.label_pos.y },
+            isValid: true
         }));
         setElements([...elements, ...newElements]);
         setRooms([...rooms, ...newRooms]);
@@ -194,9 +228,16 @@ const BlueprintEditor: React.FC = () => {
             if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement || e.target instanceof HTMLSelectElement) return;
             if (e.key === 'Delete' || e.key === 'Backspace') {
                 if (selectedId) {
-                    setElements(elements.filter(el => el.id !== selectedId));
-                    setRooms(rooms.filter(r => r.id !== selectedId));
-                    setSelectedId(null);
+                    const elToDelete = elements.find(el => el.id === selectedId);
+                    if (elToDelete) {
+                         const newElements = elements.filter(el => el.id !== selectedId);
+                         updateElements(newElements); // Use updateElements to trigger room recalc
+                         setSelectedId(null);
+                    } else {
+                        // Deleting a room directly
+                        setRooms(rooms.filter(r => r.id !== selectedId));
+                        setSelectedId(null);
+                    }
                 }
             }
             if (e.key === 'Escape') { setActivePoints([]); setTool('select'); }
@@ -259,9 +300,17 @@ const BlueprintEditor: React.FC = () => {
                             <Layer>
                                 {rooms.map(room => {
                                     const isSelected = selectedId === room.id;
+                                    const isValid = room.isValid !== false; // Default to true if undefined
+
                                     let fillColor = isSelected ? "rgba(99, 102, 241, 0.2)" : "rgba(200, 200, 200, 0.1)";
-                                    
-                                    if (room.flooring?.hex) {
+                                    let strokeColor = isSelected ? "#4f46e5" : "transparent";
+                                    let dash: number[] = [];
+
+                                    if (!isValid) {
+                                        strokeColor = "#ef4444"; // Red
+                                        dash = [10, 5];
+                                        fillColor = "rgba(239, 68, 68, 0.05)"; // Very light red
+                                    } else if (room.flooring?.hex) {
                                         fillColor = room.flooring.hex;
                                     } else if (room.paint?.hex) {
                                         fillColor = room.paint.hex;
@@ -274,17 +323,21 @@ const BlueprintEditor: React.FC = () => {
                                                 closed 
                                                 fill={fillColor} 
                                                 opacity={isSelected ? 0.6 : 0.4}
-                                                stroke={isSelected ? "#4f46e5" : "transparent"}
-                                                strokeWidth={2}
+                                                stroke={strokeColor}
+                                                strokeWidth={isValid ? 2 : 1}
+                                                dash={dash}
                                             />
                                             <Text 
                                                 x={room.label_pos.x - 50} 
                                                 y={room.label_pos.y} 
-                                                text={`${room.name}\n${calculatePolygonArea(room.points, unitSystem)}`} 
+                                                text={isValid 
+                                                    ? `${room.name}\n${calculatePolygonArea(room.points, unitSystem)}`
+                                                    : `${room.name}\n(Open Loop)`
+                                                } 
                                                 align="center" 
                                                 width={100} 
                                                 fontSize={14} 
-                                                fill={fillColor === "rgba(200, 200, 200, 0.1)" ? "#555" : "#333"} 
+                                                fill={!isValid ? "#ef4444" : (fillColor === "rgba(200, 200, 200, 0.1)" ? "#555" : "#333")} 
                                                 fontStyle="bold"
                                             />
                                         </Group>
@@ -327,16 +380,16 @@ const BlueprintEditor: React.FC = () => {
                         selectedRoom={selectedRoom}
                         unitSystem={unitSystem}
                         onUpdateLength={updateElementLength}
-                        onUpdateCurvature={(val) => setElements(elements.map(el => el.id === selectedId ? {...el, curvature: val} : el))}
+                        onUpdateCurvature={(val) => updateElements(elements.map(el => el.id === selectedId ? {...el, curvature: val} : el))}
                         onEditVertical={() => selectedId && setEditingElementId(selectedId)}
                         onUpdateRoom={(updatedRoom) => setRooms(rooms.map(r => r.id === updatedRoom.id ? updatedRoom : r))}
-                        onUpdateElement={(updatedElement) => setElements(elements.map(el => el.id === updatedElement.id ? updatedElement : el))}
+                        onUpdateElement={(updatedElement) => updateElements(elements.map(el => el.id === updatedElement.id ? updatedElement : el))}
                     />
                 </div>
             </div>
 
             <MagicBuildModal open={showMagicModal} onOpenChange={setShowMagicModal} onGenerate={handleMagicGenerate} /> 
-            {editingElementId && editingElement && <ElevationEditor element={editingElement as any} allElements={elements as any[]} onUpdate={(updated) => setElements(elements.map(el => el.id === updated.id ? updated as Element : el))} onClose={() => setEditingElementId(null)} />} 
+            {editingElementId && editingElement && <ElevationEditor element={editingElement as any} allElements={elements as any[]} onUpdate={(updated) => updateElements(elements.map(el => el.id === updated.id ? updated as Element : el))} onClose={() => setEditingElementId(null)} />} 
             {show3D && <ThreeDViewer project={{ id: 'current', name: projectName, elements, rooms }} onExit={() => setShow3D(false)} />}
         </div>
     );
