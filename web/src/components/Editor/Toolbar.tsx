@@ -13,6 +13,7 @@ interface ToolbarProps {
     onSave: () => void;
     isSaving: boolean;
     onMagicBuild: () => void;
+    onToggle3D: () => void;
 }
 
 export const Toolbar: React.FC<ToolbarProps> = ({
@@ -20,7 +21,8 @@ export const Toolbar: React.FC<ToolbarProps> = ({
     unitSystem, setUnitSystem,
     gridMode, setGridMode,
     onSave, isSaving,
-    onMagicBuild
+    onMagicBuild,
+    onToggle3D
 }) => {
     return (
         <div className="bg-background border-b px-4 py-3 flex justify-between items-center z-10 shadow-sm">
@@ -53,6 +55,9 @@ export const Toolbar: React.FC<ToolbarProps> = ({
                 </ToggleGroup>
             </div>
             <div className="flex gap-3">
+                <Button variant="outline" onClick={onToggle3D}>
+                    3D View
+                </Button>
                 <Button variant="secondary" onClick={onMagicBuild}>
                     <Sparkles className="size-4" />
                     Magic Build

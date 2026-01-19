@@ -14,6 +14,7 @@ describe('Toolbar', () => {
             onSave: vi.fn(),
             isSaving: false,
             onMagicBuild: vi.fn(),
+            onToggle3D: vi.fn(),
         };
         render(<Toolbar {...props} />);
         expect(screen.getByDisplayValue("Test Project")).toBeInTheDocument();
@@ -31,6 +32,7 @@ describe('Toolbar', () => {
             onSave: onSave,
             isSaving: false,
             onMagicBuild: vi.fn(),
+            onToggle3D: vi.fn(),
         };
         render(<Toolbar {...props} />);
         fireEvent.click(screen.getByText("Save Project"));
@@ -49,6 +51,7 @@ describe('Toolbar', () => {
             onSave: vi.fn(),
             isSaving: false,
             onMagicBuild: vi.fn(),
+            onToggle3D: vi.fn(),
         };
         render(<Toolbar {...props} />);
         fireEvent.click(screen.getByText("Metric"));

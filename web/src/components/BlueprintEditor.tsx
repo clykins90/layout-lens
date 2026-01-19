@@ -3,6 +3,7 @@ import { Stage, Layer, Line, Text, Group, Rect, Path } from 'react-konva';
 import Konva from 'konva';
 import ElevationEditor from './ElevationEditor';
 import MagicBuildModal from './MagicBuildModal';
+import ThreeDViewer from './ThreeDViewer';
 
 import { useProjectData } from '../hooks/useProjectData';
 import { useEditorState } from '../hooks/useEditorState';
@@ -35,6 +36,7 @@ const BlueprintEditor: React.FC = () => {
     // Local UI State
     const [editingElementId, setEditingElementId] = useState<string | null>(null);
     const [showMagicModal, setShowMagicModal] = useState(false);
+    const [show3D, setShow3D] = useState(false);
     const [stageScale, setStageScale] = useState(1);
     const [stagePos, setStagePos] = useState({ x: 0, y: 0 });
 
@@ -227,6 +229,7 @@ const BlueprintEditor: React.FC = () => {
                 onSave={saveProject}
                 isSaving={isSaving}
                 onMagicBuild={() => setShowMagicModal(true)}
+                onToggle3D={() => setShow3D(true)}
             />
 
             <div className="flex flex-1 relative overflow-hidden">
@@ -297,6 +300,7 @@ const BlueprintEditor: React.FC = () => {
 
             <MagicBuildModal open={showMagicModal} onOpenChange={setShowMagicModal} onGenerate={handleMagicGenerate} /> 
             {editingElementId && editingElement && <ElevationEditor element={editingElement as any} allElements={elements as any[]} onUpdate={(updated) => setElements(elements.map(el => el.id === updated.id ? updated as Element : el))} onClose={() => setEditingElementId(null)} />} 
+            {show3D && <ThreeDViewer project={{ id: 'current', name: projectName, elements, rooms }} onExit={() => setShow3D(false)} />}
         </div>
     );
 };

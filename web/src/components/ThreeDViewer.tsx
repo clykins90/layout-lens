@@ -1,8 +1,8 @@
-import React, { useMemo, useEffect, useRef } from 'react';
-import { Canvas, useThree } from '@react-three/fiber';
+import React, { useMemo } from 'react';
+import { Canvas } from '@react-three/fiber';
 import { PointerLockControls, Sky } from '@react-three/drei';
 import * as THREE from 'three';
-import { Project, Element, Room, Point } from '../types';
+import type { Project, Element, Room } from '../types';
 
 // Constants
 const SCALE = 0.1; // Scale down so it's not huge
@@ -56,28 +56,14 @@ const RoomFloor = ({ room }: { room: Room }) => {
   );
 };
 
-const InitialCamera = ({ startPos }: { startPos?: [number, number, number] }) => {
-    const { camera } = useThree();
-    
-    useEffect(() => {
-        if (startPos) {
-            camera.position.set(...startPos);
-            camera.lookAt(startPos[0], startPos[1], startPos[2] + 10);
-        } else {
-            // Default position if no rooms
-            camera.position.set(0, PLAYER_HEIGHT, 0);
-        }
-    }, [camera, startPos]);
-
-    return null;
-}
-
 const ThreeDViewer: React.FC<ThreeDViewerProps> = ({ project, onExit }) => {
   // Find a starting point (center of first room, or 0,0)
   const startPos = useMemo<[number, number, number]>(() => {
     if (project.rooms.length > 0 && project.rooms[0].points.length > 0) {
-        const p = project.rooms[0].points[0];
-        return [p.x * SCALE, PLAYER_HEIGHT, p.y * SCALE];
+        const points = project.rooms[0].points;
+        const centerX = points.reduce((sum, p) => sum + p.x, 0) / points.length;
+        const centerY = points.reduce((sum, p) => sum + p.y, 0) / points.length;
+        return [centerX * SCALE, PLAYER_HEIGHT, centerY * SCALE];
     }
     return [0, PLAYER_HEIGHT, 0];
   }, [project]);
@@ -96,12 +82,11 @@ const ThreeDViewer: React.FC<ThreeDViewerProps> = ({ project, onExit }) => {
         </div>
       </div>
 
-      <Canvas shadows>
+      <Canvas shadows camera={{ position: startPos, fov: 75 }}>
         <Sky sunPosition={[100, 20, 100]} />
         <ambientLight intensity={0.5} />
         <pointLight position={[100, 100, 100]} intensity={1} castShadow />
         
-        <InitialCamera startPos={startPos} />
         <PointerLockControls selector="#canvas-container" />
 
         <group>
