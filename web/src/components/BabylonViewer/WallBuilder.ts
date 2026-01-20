@@ -8,13 +8,10 @@ import {
 } from '@babylonjs/core';
 import type { Element } from '../../types';
 
-// Constants
-const SCALE = 0.1;
-const WALL_HEIGHT_DEFAULT = 30; // 300 * SCALE
-
 export function buildWalls(
   scene: Scene,
   elements: Element[],
+  scale: number,
   shadowGenerator?: ShadowGenerator
 ): Mesh[] {
   const walls: Mesh[] = [];
@@ -34,23 +31,23 @@ export function buildWalls(
     const midZ = (start.y + end.y) / 2;
 
     // Calculate wall height (use element height or default)
-    const wallHeight = (height || WALL_HEIGHT_DEFAULT * 10) * SCALE;
+    const wallHeight = (height || 0) * scale;
 
     // Create wall mesh
     const wall = MeshBuilder.CreateBox(
       `wall_${index}`,
       {
-        width: length * SCALE,
+        width: length * scale,
         height: wallHeight,
-        depth: thickness * SCALE,
+        depth: thickness * scale,
       },
       scene
     );
 
     // Position wall at midpoint, centered vertically
-    wall.position.x = midX * SCALE;
+    wall.position.x = midX * scale;
     wall.position.y = wallHeight / 2;
-    wall.position.z = midZ * SCALE;
+    wall.position.z = midZ * scale;
 
     // Rotate wall to match 2D angle
     wall.rotation.y = -angle;

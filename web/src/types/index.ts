@@ -1,19 +1,43 @@
+export type UnitSystem = 'imperial' | 'metric';
+export type LengthUnit = 'in' | 'mm';
+
 export interface Point {
     x: number;
     y: number;
 }
-  
+
+export interface OpeningSpec {
+    sillHeight: number;
+    headHeight: number;
+    jambDepth?: number;
+    swing?: 'left' | 'right' | 'none';
+}
+
+export interface VerticalItemPosition {
+    along: number;
+    height: number;
+}
+
+export interface VerticalItemSize {
+    width: number;
+    height: number;
+    depth?: number;
+}
+
 export interface VerticalItem {
     id: string;
     item_type: 'switch' | 'outlet' | 'sconce' | 'frame' | 'tv' | 'picture' | 'arch' | 'circle';
-    x: number;
-    y: number;
-    width?: number;
-    height?: number;
+    position: VerticalItemPosition;
+    size: VerticalItemSize;
+    anchor: 'bottom-left' | 'bottom-center' | 'center';
+    rotation?: number;
+    locked?: boolean;
+    hidden?: boolean;
+    meta?: Record<string, string | number>;
 }
-  
+
 export type ElementType = 'wall' | 'window' | 'door' | 'opening';
-  
+
 export interface Element {
     id: string;
     start: Point;
@@ -22,6 +46,7 @@ export interface Element {
     element_type: ElementType;
     height: number;
     curvature: number; 
+    opening?: OpeningSpec;
     items: VerticalItem[];
     paint?: PaintColor;
 }
@@ -55,6 +80,8 @@ export interface Room {
 export interface Project {
     id: string;
     name: string;
+    units: UnitSystem;
+    lengthUnit: LengthUnit;
     elements: Element[];
     rooms: Room[];
 }

@@ -16,20 +16,14 @@ export const getControlPoint = (p1: Point, p2: Point, curvature: number) => {
     return { x: midX + uX * curvature, y: midY + uY * curvature };
 };
 
-export const calculatePolygonArea = (points: Point[], unitSystem: 'imperial' | 'metric') => {
+export const calculatePolygonArea = (points: Point[]) => {
     let area = 0;
     for (let i = 0; i < points.length; i++) {
         let j = (i + 1) % points.length;
         area += points[i].x * points[j].y;
         area -= points[j].x * points[i].y;
     }
-    const pxArea = Math.abs(area / 2);
-    
-    if (unitSystem === 'imperial') {
-        return (pxArea / 2500).toFixed(1) + " sq ft";
-    } else {
-        return (pxArea / (164*164)).toFixed(2) + " m²";
-    }
+    return Math.abs(area / 2);
 };
 
 export const doSegmentsOverlap = (p1: Point, p2: Point, p3: Point, p4: Point) => {
@@ -52,29 +46,6 @@ export const doSegmentsOverlap = (p1: Point, p2: Point, p3: Point, p4: Point) =>
         const min2 = Math.min(p3.x, p4.x);
         const max2 = Math.max(p3.x, p4.x);
         return Math.max(min1, min2) < Math.min(max1, max2) - 1;
-    }
-};
-
-export const formatLength = (px: number, unitSystem: 'imperial' | 'metric') => {
-    if (unitSystem === 'imperial') {
-        const totalInches = px / (50/12);
-        const feet = Math.floor(totalInches / 12);
-        const inches = Math.floor(totalInches % 12);
-        const fraction = Math.round((totalInches - Math.floor(totalInches)) * 16);
-        let text = `${feet}' ${inches}"`;
-        if (fraction > 0) text += ` ${fraction}/16`;
-        return text;
-    } else {
-        const meters = px / 164;
-        return `${meters.toFixed(2)}m`;
-    }
-};
-
-export const getGridSize = (unitSystem: 'imperial' | 'metric', gridMode: 'coarse' | 'fine') => {
-    if (unitSystem === 'imperial') {
-        return gridMode === 'coarse' ? 50 : 50/12;
-    } else {
-        return gridMode === 'coarse' ? 82 : 16.4; 
     }
 };
 

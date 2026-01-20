@@ -9,10 +9,9 @@ import { setupEnvironment } from './EnvironmentSetup';
 import { setupPostProcessing, disposePostProcessing } from './PostProcessing';
 import type { PostProcessingResult } from './PostProcessing';
 import type { Project } from '../../types';
+import { unitToMeters } from '../../utils/units';
 
-// Constants
-const SCALE = 0.1;
-const PLAYER_HEIGHT = 17; // 170cm * 0.1 scale
+const PLAYER_HEIGHT_M = 1.7;
 
 interface BabylonViewerProps {
   project: Project;
@@ -22,6 +21,7 @@ interface BabylonViewerProps {
 const BabylonViewer: React.FC<BabylonViewerProps> = ({ project, onExit }) => {
   const postProcessingRef = useRef<PostProcessingResult | null>(null);
   const sceneRef = useRef<Scene | null>(null);
+  const worldScale = unitToMeters(project.lengthUnit);
 
   // Calculate starting position from center of first room
   const startPos = useMemo<Vector3>(() => {
@@ -29,10 +29,10 @@ const BabylonViewer: React.FC<BabylonViewerProps> = ({ project, onExit }) => {
       const points = project.rooms[0].points;
       const centerX = points.reduce((sum, p) => sum + p.x, 0) / points.length;
       const centerY = points.reduce((sum, p) => sum + p.y, 0) / points.length;
-      return new Vector3(centerX * SCALE, PLAYER_HEIGHT, centerY * SCALE);
+      return new Vector3(centerX * worldScale, PLAYER_HEIGHT_M, centerY * worldScale);
     }
-    return new Vector3(0, PLAYER_HEIGHT, 0);
-  }, [project.rooms]);
+    return new Vector3(0, PLAYER_HEIGHT_M, 0);
+  }, [project.rooms, worldScale]);
 
   // Handle scene setup when ready
   const handleSceneReady = useCallback(
@@ -47,18 +47,18 @@ const BabylonViewer: React.FC<BabylonViewerProps> = ({ project, onExit }) => {
 
       // 3. Build geometry
       // Build walls
-      buildWalls(scene, project.elements, shadowGenerator);
+      buildWalls(scene, project.elements, worldScale, shadowGenerator);
 
       // Build floors
-      buildFloors(scene, project.rooms);
+      buildFloors(scene, project.rooms, worldScale);
 
       // Build openings (windows, doors, openings)
-      buildOpenings(scene, project.elements, shadowGenerator);
+      buildOpenings(scene, project.elements, worldScale, shadowGenerator);
 
       // 4. Setup post-processing
       postProcessingRef.current = setupPostProcessing(scene, camera);
     },
-    [project, startPos]
+    [project, startPos, worldScale]
   );
 
   // Handle ESC key for exit (when not in pointer lock)

@@ -13,16 +13,51 @@ pub struct Point {
 pub struct VerticalItem {
     pub id: String,
     pub item_type: String, // "switch", "outlet", "sconce", "frame", "tv", "picture", "arch", "circle"
-    pub x: f32,
-    pub y: f32,
+    pub position: ItemPosition,
+    pub size: ItemSize,
+    #[serde(default = "default_anchor")]
+    pub anchor: String,
     #[serde(default)]
-    pub width: f32,
+    pub rotation: Option<f32>,
     #[serde(default)]
-    pub height: f32,
+    pub locked: Option<bool>,
+    #[serde(default)]
+    pub hidden: Option<bool>,
+    #[serde(default)]
+    pub meta: Option<Value>,
 }
 
 fn default_element_type() -> String { "wall".to_string() }
-fn default_wall_height() -> f32 { 400.0 }
+fn default_wall_height() -> f32 { 96.0 }
+fn default_anchor() -> String { "bottom-left".to_string() }
+fn default_unit_system() -> String { "imperial".to_string() }
+fn default_length_unit() -> String { "in".to_string() }
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct ItemPosition {
+    pub along: f32,
+    pub height: f32,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct ItemSize {
+    pub width: f32,
+    pub height: f32,
+    #[serde(default)]
+    pub depth: Option<f32>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct OpeningSpec {
+    #[serde(rename = "sillHeight")]
+    pub sill_height: f32,
+    #[serde(rename = "headHeight")]
+    pub head_height: f32,
+    #[serde(rename = "jambDepth")]
+    pub jamb_depth: Option<f32>,
+    #[serde(default)]
+    pub swing: Option<String>,
+}
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Element {
@@ -36,6 +71,8 @@ pub struct Element {
     pub height: f32,
     #[serde(default)]
     pub curvature: f32, 
+    #[serde(default)]
+    pub opening: Option<OpeningSpec>,
     #[serde(default)]
     pub items: Vec<VerticalItem>,
     #[serde(default)]
@@ -78,6 +115,10 @@ pub struct Room {
 pub struct Project {
     pub id: String,
     pub name: String,
+    #[serde(default = "default_unit_system")]
+    pub units: String,
+    #[serde(rename = "lengthUnit", default = "default_length_unit")]
+    pub length_unit: String,
     pub elements: Vec<Element>,
     pub rooms: Vec<Room>,
 }

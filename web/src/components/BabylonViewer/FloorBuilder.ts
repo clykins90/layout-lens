@@ -10,10 +10,7 @@ import {
 import earcut from 'earcut';
 import type { Room } from '../../types';
 
-// Constants
-const SCALE = 0.1;
-
-export function buildFloors(scene: Scene, rooms: Room[]): Mesh[] {
+export function buildFloors(scene: Scene, rooms: Room[], scale: number): Mesh[] {
   const floors: Mesh[] = [];
 
   rooms.forEach((room, index) => {
@@ -30,7 +27,7 @@ export function buildFloors(scene: Scene, rooms: Room[]): Mesh[] {
 
     // Convert room points to Vector2 array for PolygonMeshBuilder
     const corners = room.points.map(
-      (p) => new Vector2(p.x * SCALE, p.y * SCALE)
+      (p) => new Vector2(p.x * scale, p.y * scale)
     );
 
     // Create polygon mesh for floor

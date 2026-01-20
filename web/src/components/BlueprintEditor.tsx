@@ -11,16 +11,25 @@ import { Toolbar } from './Editor/Toolbar';
 import { ToolPalette } from './Editor/ToolPalette';
 import { PropertiesPanel } from './Editor/PropertiesPanel';
 
-import type { Element, ElementType, Room } from '../types';
-import { distance, getControlPoint, calculatePolygonArea, snapToGrid, getGridSize, formatLength, mergeCollinearSegments, findEnclosingRoom } from '../utils/geometry';
+import type { Element, ElementType, OpeningSpec, Room } from '../types';
+import { distance, getControlPoint, calculatePolygonArea, snapToGrid, mergeCollinearSegments, findEnclosingRoom } from '../utils/geometry';
+import { formatArea, formatLength, getGridStep, lengthUnitForSystem, toPx, toPxPoint, fromPxPoint } from '../utils/units';
 
-const WALL_THICKNESS = 10;
+const DEFAULT_WALL_THICKNESS_IN = 4;
+const DEFAULT_WALL_HEIGHT_IN = 96;
+const DEFAULT_DOOR_HEIGHT_IN = 80;
+const DEFAULT_WINDOW_SILL_IN = 36;
+const DEFAULT_WINDOW_HEAD_IN = 72;
+const WINDOW_STROKE_PX = 6;
+const DOOR_STROKE_PX = 8;
+const OPENING_STROKE_PX = 6;
 
 const BlueprintEditor: React.FC = () => {
     // Hooks
     const { 
         elements, setElements, rooms, setRooms, 
         projectName, setProjectName, 
+        unitSystem, setUnitSystem,
         isSaving, saveProject 
     } = useProjectData();
     
@@ -29,7 +38,6 @@ const BlueprintEditor: React.FC = () => {
         selectedId, setSelectedId, 
         activePoints, setActivePoints, 
         mousePos, setMousePos,
-        unitSystem, setUnitSystem, 
         gridMode, setGridMode 
     } = useEditorState();
 
@@ -46,6 +54,22 @@ const BlueprintEditor: React.FC = () => {
     const selectedElement = elements.find(el => el.id === selectedId);
     const selectedRoom = rooms.find(r => r.id === selectedId);
     const editingElement = elements.find(el => el.id === editingElementId);
+    const lengthUnit = lengthUnitForSystem(unitSystem);
+
+    const toUnit = (inches: number) => (lengthUnit === 'in' ? inches : inches * 25.4);
+
+    const buildDefaultOpening = (type: ElementType, wallHeight: number): OpeningSpec => {
+        if (type === 'door') {
+            return { sillHeight: 0, headHeight: Math.min(wallHeight, toUnit(DEFAULT_DOOR_HEIGHT_IN)) };
+        }
+        if (type === 'window') {
+            return {
+                sillHeight: Math.min(wallHeight * 0.5, toUnit(DEFAULT_WINDOW_SILL_IN)),
+                headHeight: Math.min(wallHeight, toUnit(DEFAULT_WINDOW_HEAD_IN))
+            };
+        }
+        return { sillHeight: 0, headHeight: wallHeight };
+    };
 
     // --- Core Logic: Update Elements & Auto-Recalculate Rooms ---
 
@@ -79,6 +103,57 @@ const BlueprintEditor: React.FC = () => {
         setRooms(updatedRooms);
     };
 
+    const convertUnits = (nextUnitSystem: typeof unitSystem) => {
+        if (nextUnitSystem === unitSystem) return;
+        const factor = nextUnitSystem === 'metric' ? 25.4 : 1 / 25.4;
+
+        const convertPoint = (point: { x: number; y: number }) => ({
+            x: point.x * factor,
+            y: point.y * factor,
+        });
+
+        const nextElements = elements.map(el => ({
+            ...el,
+            start: convertPoint(el.start),
+            end: convertPoint(el.end),
+            thickness: el.thickness * factor,
+            height: el.height * factor,
+            curvature: el.curvature * factor,
+            opening: el.opening
+                ? {
+                    ...el.opening,
+                    sillHeight: el.opening.sillHeight * factor,
+                    headHeight: el.opening.headHeight * factor,
+                    jambDepth: el.opening.jambDepth ? el.opening.jambDepth * factor : undefined,
+                }
+                : undefined,
+            items: (el.items || []).map(item => ({
+                ...item,
+                position: {
+                    along: item.position.along * factor,
+                    height: item.position.height * factor,
+                },
+                size: {
+                    width: item.size.width * factor,
+                    height: item.size.height * factor,
+                    depth: item.size.depth ? item.size.depth * factor : undefined,
+                },
+            })),
+        }));
+
+        const nextRooms = rooms.map(room => ({
+            ...room,
+            points: room.points.map(convertPoint),
+            label_pos: convertPoint(room.label_pos),
+        }));
+
+        setElements(nextElements);
+        setRooms(nextRooms);
+        setActivePoints([]);
+        setMousePos(null);
+        setUnitSystem(nextUnitSystem);
+    };
+
     // --- Interaction Handlers ---
 
     const handleWheel = (e: Konva.KonvaEventObject<WheelEvent>) => {
@@ -100,9 +175,11 @@ const BlueprintEditor: React.FC = () => {
         if (tool === 'select') return;
         const stage = stageRef.current;
         if (!stage) return;
-        const pointer = stage.getRelativePointerPosition(); 
-        if (!pointer) return;
-        const snapped = snapToGrid(pointer, getGridSize(unitSystem, gridMode));
+        const pointerPx = stage.getRelativePointerPosition(); 
+        if (!pointerPx) return;
+        const pointer = fromPxPoint(pointerPx, lengthUnit);
+        const gridStep = getGridStep(unitSystem, gridMode, lengthUnit);
+        const snapped = snapToGrid(pointer, gridStep);
         
         if (tool === 'wall' || tool === 'window' || tool === 'door' || tool === 'opening') {
             if (activePoints.length === 0) {
@@ -127,24 +204,27 @@ const BlueprintEditor: React.FC = () => {
                             }
                         }
                         if (!merged) {
+                            const wallHeight = toUnit(DEFAULT_WALL_HEIGHT_IN);
                             const newEl: Element = {
                                 id: crypto.randomUUID(),
                                 start, end,
-                                thickness: WALL_THICKNESS,
+                                thickness: toUnit(DEFAULT_WALL_THICKNESS_IN),
                                 element_type: 'wall',
-                                height: 400,
+                                height: wallHeight,
                                 items: [],
                                 curvature: 0
                             };
                             updateElements([...elements, newEl]);
                         }
                     } else {
+                        const wallHeight = toUnit(DEFAULT_WALL_HEIGHT_IN);
                         const newEl: Element = {
                             id: crypto.randomUUID(),
                             start, end,
-                            thickness: WALL_THICKNESS,
+                            thickness: toUnit(DEFAULT_WALL_THICKNESS_IN),
                             element_type: tool as ElementType,
-                            height: 400,
+                            height: wallHeight,
+                            opening: buildDefaultOpening(tool as ElementType, wallHeight),
                             items: [],
                             curvature: 0
                         };
@@ -182,11 +262,13 @@ const BlueprintEditor: React.FC = () => {
 
     const updateElementLength = (v1: number, v2: number, v3: number) => {
         if (!selectedElement) return;
-        let totalPixels = 0;
+        let targetLength = 0;
         if (unitSystem === 'imperial') {
-            totalPixels = (v1 * 12 + v2 + (v3 / 16)) * (50/12);
+            const totalInches = v1 * 12 + v2 + (v3 / 16);
+            targetLength = lengthUnit === 'in' ? totalInches : totalInches * 25.4;
         } else {
-            totalPixels = v1 * 164;
+            const meters = v1;
+            targetLength = lengthUnit === 'mm' ? meters * 1000 : meters * 39.3701;
         }
         const dx = selectedElement.end.x - selectedElement.start.x;
         const dy = selectedElement.end.y - selectedElement.start.y;
@@ -194,21 +276,33 @@ const BlueprintEditor: React.FC = () => {
         if (currentLen === 0) return;
         const uX = dx / currentLen;
         const uY = dy / currentLen;
-        const newEnd = { x: selectedElement.start.x + uX * totalPixels, y: selectedElement.start.y + uY * totalPixels };
+        const newEnd = { x: selectedElement.start.x + uX * targetLength, y: selectedElement.start.y + uY * targetLength };
         updateElements(elements.map(el => el.id === selectedElement.id ? { ...el, end: newEnd } : el));
     };
 
     const handleMagicGenerate = (generatedProject: any) => {
+        if (generatedProject.units && elements.length === 0 && rooms.length === 0) {
+            setUnitSystem(generatedProject.units);
+        }
         let offsetX = 0;
         if (elements.length > 0) {
             const maxX = Math.max(...elements.map(e => Math.max(e.start.x, e.end.x)));
-            offsetX = maxX + 100; 
+            offsetX = maxX + toUnit(24); 
         }
-        const newElements = generatedProject.elements.map((el: Element) => ({
-            ...el,
-            start: { x: el.start.x + offsetX, y: el.start.y },
-            end: { x: el.end.x + offsetX, y: el.end.y }
-        }));
+        const newElements = generatedProject.elements.map((el: Element) => {
+            const wallHeight = el.height || toUnit(DEFAULT_WALL_HEIGHT_IN);
+            const opening = el.element_type !== 'wall'
+                ? (el.opening || buildDefaultOpening(el.element_type, wallHeight))
+                : undefined;
+            return {
+                ...el,
+                start: { x: el.start.x + offsetX, y: el.start.y },
+                end: { x: el.end.x + offsetX, y: el.end.y },
+                height: wallHeight,
+                thickness: el.thickness || toUnit(DEFAULT_WALL_THICKNESS_IN),
+                opening,
+            };
+        });
         // For magic generate, we trust the generator or run a recalc pass if needed.
         // Let's just merge and set for now.
         const newRooms = generatedProject.rooms.map((r: Room) => ({
@@ -249,7 +343,8 @@ const BlueprintEditor: React.FC = () => {
     // --- Render Helpers ---
 
     const renderGrid = () => {
-        const size = getGridSize(unitSystem, gridMode);
+        const gridStep = getGridStep(unitSystem, gridMode, lengthUnit);
+        const size = toPx(gridStep, lengthUnit);
         const lines = [];
         for (let i = 0; i <= 100; i++) {
             lines.push(<Line key={`v${i}`} points={[i*size, 0, i*size, 5000]} stroke="#eee" strokeWidth={1} />);
@@ -258,13 +353,16 @@ const BlueprintEditor: React.FC = () => {
         return <Group>{lines}</Group>;
     };
 
+    const activePointsPx = activePoints.map(p => toPxPoint(p, lengthUnit));
+    const mousePosPx = mousePos ? toPxPoint(mousePos, lengthUnit) : null;
+
     return (
         <div className="flex flex-col h-screen w-full overflow-hidden bg-gray-100 font-sans text-gray-900">
             <Toolbar 
                 projectName={projectName} 
                 setProjectName={setProjectName}
                 unitSystem={unitSystem}
-                setUnitSystem={setUnitSystem}
+                setUnitSystem={convertUnits}
                 gridMode={gridMode}
                 setGridMode={setGridMode}
                 onSave={saveProject}
@@ -287,7 +385,10 @@ const BlueprintEditor: React.FC = () => {
                                 const stage = stageRef.current;
                                 if (!stage) return;
                                 const pointer = stage.getRelativePointerPosition();
-                                if (pointer) setMousePos(snapToGrid(pointer, getGridSize(unitSystem, gridMode)));
+                                if (!pointer) return;
+                                const unitPoint = fromPxPoint(pointer, lengthUnit);
+                                const gridStep = getGridStep(unitSystem, gridMode, lengthUnit);
+                                setMousePos(snapToGrid(unitPoint, gridStep));
                             }} 
                             draggable={tool === 'select'} 
                             scaleX={stageScale} 
@@ -301,6 +402,8 @@ const BlueprintEditor: React.FC = () => {
                                 {rooms.map(room => {
                                     const isSelected = selectedId === room.id;
                                     const isValid = room.isValid !== false; // Default to true if undefined
+                                    const roomPointsPx = room.points.map(p => toPxPoint(p, lengthUnit));
+                                    const labelPosPx = toPxPoint(room.label_pos, lengthUnit);
 
                                     let fillColor = isSelected ? "rgba(99, 102, 241, 0.2)" : "rgba(200, 200, 200, 0.1)";
                                     let strokeColor = isSelected ? "#4f46e5" : "transparent";
@@ -319,7 +422,7 @@ const BlueprintEditor: React.FC = () => {
                                     return (
                                         <Group key={room.id} onClick={() => tool === 'select' && setSelectedId(room.id)}>
                                             <Line 
-                                                points={room.points.flatMap(p => [p.x, p.y])} 
+                                                points={roomPointsPx.flatMap(p => [p.x, p.y])} 
                                                 closed 
                                                 fill={fillColor} 
                                                 opacity={isSelected ? 0.6 : 0.4}
@@ -328,10 +431,10 @@ const BlueprintEditor: React.FC = () => {
                                                 dash={dash}
                                             />
                                             <Text 
-                                                x={room.label_pos.x - 50} 
-                                                y={room.label_pos.y} 
+                                                x={labelPosPx.x - 50} 
+                                                y={labelPosPx.y} 
                                                 text={isValid 
-                                                    ? `${room.name}\n${calculatePolygonArea(room.points, unitSystem)}`
+                                                    ? `${room.name}\n${formatArea(calculatePolygonArea(room.points), unitSystem, lengthUnit)}`
                                                     : `${room.name}\n(Open Loop)`
                                                 } 
                                                 align="center" 
@@ -346,10 +449,14 @@ const BlueprintEditor: React.FC = () => {
                             </Layer>
                             <Layer>
                                 {elements.map(el => {
-                                    let color = '#333'; let width = el.thickness; let dash: number[] = [];
-                                    if (el.element_type === 'window') { color = '#60a5fa'; width = 6; }
-                                    else if (el.element_type === 'door') { color = '#92400e'; width = 8; }
-                                    else if (el.element_type === 'opening') { color = '#d1d5db'; width = 6; dash = [10, 10]; }
+                                    let color = '#333'; let width = 0; let dash: number[] = [];
+                                    const startPx = toPxPoint(el.start, lengthUnit);
+                                    const endPx = toPxPoint(el.end, lengthUnit);
+                                    const thicknessPx = Math.max(2, toPx(el.thickness, lengthUnit));
+                                    if (el.element_type === 'window') { color = '#60a5fa'; width = WINDOW_STROKE_PX; }
+                                    else if (el.element_type === 'door') { color = '#92400e'; width = DOOR_STROKE_PX; }
+                                    else if (el.element_type === 'opening') { color = '#d1d5db'; width = OPENING_STROKE_PX; dash = [10, 10]; }
+                                    else { width = thicknessPx; }
                                     
                                     // Override wall color if painted
                                     if (el.element_type === 'wall' && el.paint?.hex) {
@@ -358,19 +465,51 @@ const BlueprintEditor: React.FC = () => {
                                     }
 
                                     const isSelected = selectedId === el.id;
-                                    const midX = (el.start.x + el.end.x) / 2;
-                                    const midY = (el.start.y + el.end.y) / 2;
+                                    const midX = (startPx.x + endPx.x) / 2;
+                                    const midY = (startPx.y + endPx.y) / 2;
                                     const curvature = el.curvature || 0;
+                                    const controlPoint = curvature === 0 ? null : getControlPoint(el.start, el.end, curvature);
+                                    const controlPointPx = controlPoint ? toPxPoint(controlPoint, lengthUnit) : null;
                                     return (
                                         <Group key={el.id} onClick={e => { if (tool === 'select') { e.cancelBubble = true; setSelectedId(el.id); } }}>
-                                            {curvature === 0 ? <Line points={[el.start.x, el.start.y, el.end.x, el.end.y]} stroke={isSelected ? '#4f46e5' : color} strokeWidth={width} dash={dash} lineCap="round" />
-                                                            : <Path data={`M${el.start.x},${el.start.y} Q${getControlPoint(el.start, el.end, curvature).x},${getControlPoint(el.start, el.end, curvature).y} ${el.end.x},${el.end.y}`} stroke={isSelected ? '#4f46e5' : color} strokeWidth={width} dash={dash} lineCap="round" fill="transparent" />}
-                                            <Text x={midX} y={midY - 20} text={formatLength(distance(el.start, el.end), unitSystem)} fontSize={12} fill="#666" align="center" />
+                                            {curvature === 0 || !controlPointPx ? (
+                                                <Line
+                                                    points={[startPx.x, startPx.y, endPx.x, endPx.y]}
+                                                    stroke={isSelected ? '#4f46e5' : color}
+                                                    strokeWidth={width}
+                                                    dash={dash}
+                                                    lineCap="round"
+                                                />
+                                            ) : (
+                                                <Path
+                                                    data={`M${startPx.x},${startPx.y} Q${controlPointPx.x},${controlPointPx.y} ${endPx.x},${endPx.y}`}
+                                                    stroke={isSelected ? '#4f46e5' : color}
+                                                    strokeWidth={width}
+                                                    dash={dash}
+                                                    lineCap="round"
+                                                    fill="transparent"
+                                                />
+                                            )}
+                                            <Text
+                                                x={midX}
+                                                y={midY - 20}
+                                                text={formatLength(distance(el.start, el.end), unitSystem, lengthUnit)}
+                                                fontSize={12}
+                                                fill="#666"
+                                                align="center"
+                                            />
                                             {el.items && el.items.length > 0 && <Rect x={midX} y={midY} width={8} height={8} fill="#fbbf24" rotation={45} offsetX={4} offsetY={4} />}
                                         </Group>
                                     );
                                 })}
-                                {activePoints.length > 0 && mousePos && <Line points={[...activePoints.flatMap(p => [p.x, p.y]), mousePos.x, mousePos.y]} stroke="#666" strokeWidth={2} dash={[5, 5]} />}
+                                {activePointsPx.length > 0 && mousePosPx && (
+                                    <Line
+                                        points={[...activePointsPx.flatMap(p => [p.x, p.y]), mousePosPx.x, mousePosPx.y]}
+                                        stroke="#666"
+                                        strokeWidth={2}
+                                        dash={[5, 5]}
+                                    />
+                                )}
                             </Layer>
                         </Stage>
                     </div>
@@ -389,8 +528,21 @@ const BlueprintEditor: React.FC = () => {
             </div>
 
             <MagicBuildModal open={showMagicModal} onOpenChange={setShowMagicModal} onGenerate={handleMagicGenerate} /> 
-            {editingElementId && editingElement && <ElevationEditor element={editingElement as any} allElements={elements as any[]} onUpdate={(updated) => updateElements(elements.map(el => el.id === updated.id ? updated as Element : el))} onClose={() => setEditingElementId(null)} />} 
-            {show3D && <BabylonViewer project={{ id: 'current', name: projectName, elements, rooms }} onExit={() => setShow3D(false)} />}
+            {editingElementId && editingElement && (
+                <ElevationEditor
+                    unitSystem={unitSystem}
+                    element={editingElement}
+                    allElements={elements}
+                    onUpdate={(updated) => updateElements(elements.map(el => el.id === updated.id ? updated : el))}
+                    onClose={() => setEditingElementId(null)}
+                />
+            )} 
+            {show3D && (
+                <BabylonViewer
+                    project={{ id: 'current', name: projectName, units: unitSystem, lengthUnit, elements, rooms }}
+                    onExit={() => setShow3D(false)}
+                />
+            )}
         </div>
     );
 };

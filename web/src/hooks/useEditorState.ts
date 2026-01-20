@@ -10,7 +10,6 @@ export const useEditorState = () => {
     const [mousePos, setMousePos] = useState<Point | null>(null);
     
     // Settings
-    const [unitSystem, setUnitSystem] = useState<'imperial' | 'metric'>('imperial');
     const [gridMode, setGridMode] = useState<'coarse' | 'fine'>('coarse');
 
     return {
@@ -18,7 +17,6 @@ export const useEditorState = () => {
         selectedId, setSelectedId,
         activePoints, setActivePoints,
         mousePos, setMousePos,
-        unitSystem, setUnitSystem,
         gridMode, setGridMode
     };
 };

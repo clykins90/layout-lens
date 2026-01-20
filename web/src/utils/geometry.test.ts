@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { distance, getControlPoint, calculatePolygonArea, doSegmentsOverlap, formatLength, pointsEqual, areCollinear, mergeCollinearSegments, findEnclosingRoom } from './geometry';
+import { distance, getControlPoint, calculatePolygonArea, doSegmentsOverlap, pointsEqual, areCollinear, mergeCollinearSegments, findEnclosingRoom } from './geometry';
+import { formatArea, formatLength } from './units';
 import type { Element } from '../types';
 
 describe('Geometry Utils', () => {
@@ -16,25 +17,27 @@ describe('Geometry Utils', () => {
   });
 
   it('calculates polygon area (Imperial)', () => {
-    // 50x50 px box. 50px = 1ft. Area = 1 sq ft.
+    // 12x12 inches. Area = 144 sq in = 1 sq ft.
     const points = [
         {x: 0, y: 0},
-        {x: 50, y: 0},
-        {x: 50, y: 50},
-        {x: 0, y: 50}
+        {x: 12, y: 0},
+        {x: 12, y: 12},
+        {x: 0, y: 12}
     ];
-    expect(calculatePolygonArea(points, 'imperial')).toBe("1.0 sq ft");
+    expect(calculatePolygonArea(points)).toBe(144);
+    expect(formatArea(calculatePolygonArea(points), 'imperial', 'in')).toBe('1.0 sq ft');
   });
 
   it('calculates polygon area (Metric)', () => {
-    // 164x164 px box. 164px = 1m. Area = 1 m².
+    // 1000x1000 mm box. Area = 1 m^2.
     const points = [
         {x: 0, y: 0},
-        {x: 164, y: 0},
-        {x: 164, y: 164},
-        {x: 0, y: 164}
+        {x: 1000, y: 0},
+        {x: 1000, y: 1000},
+        {x: 0, y: 1000}
     ];
-    expect(calculatePolygonArea(points, 'metric')).toBe("1.00 m²");
+    expect(calculatePolygonArea(points)).toBe(1_000_000);
+    expect(formatArea(calculatePolygonArea(points), 'metric', 'mm')).toBe('1.00 m^2');
   });
 
   describe('doSegmentsOverlap', () => {
@@ -65,13 +68,9 @@ describe('Geometry Utils', () => {
   });
   
   it('formats length correctly', () => {
-      // 50px = 1ft = 12in
-      expect(formatLength(50, 'imperial')).toContain(`1' 0"`);
-      // 25px = 0.5ft = 6in
-      expect(formatLength(25, 'imperial')).toContain(`0' 6"`);
-
-      // 164px = 1m
-      expect(formatLength(164, 'metric')).toBe("1.00m");
+      expect(formatLength(12, 'imperial', 'in')).toContain(`1' 0"`);
+      expect(formatLength(6, 'imperial', 'in')).toContain(`0' 6"`);
+      expect(formatLength(1000, 'metric', 'mm')).toBe('1.00m');
   });
 
   describe('pointsEqual', () => {
@@ -187,10 +186,10 @@ describe('Geometry Utils', () => {
   describe('findEnclosingRoom', () => {
     it('detects a simple rectangular room', () => {
       const elements: Element[] = [
-        { id: 'w1', start: { x: 0, y: 0 }, end: { x: 100, y: 0 }, element_type: 'wall', thickness: 10, height: 400, items: [], curvature: 0 },
-        { id: 'w2', start: { x: 100, y: 0 }, end: { x: 100, y: 100 }, element_type: 'wall', thickness: 10, height: 400, items: [], curvature: 0 },
-        { id: 'w3', start: { x: 100, y: 100 }, end: { x: 0, y: 100 }, element_type: 'wall', thickness: 10, height: 400, items: [], curvature: 0 },
-        { id: 'w4', start: { x: 0, y: 100 }, end: { x: 0, y: 0 }, element_type: 'wall', thickness: 10, height: 400, items: [], curvature: 0 },
+        { id: 'w1', start: { x: 0, y: 0 }, end: { x: 100, y: 0 }, element_type: 'wall', thickness: 10, height: 96, items: [], curvature: 0 },
+        { id: 'w2', start: { x: 100, y: 0 }, end: { x: 100, y: 100 }, element_type: 'wall', thickness: 10, height: 96, items: [], curvature: 0 },
+        { id: 'w3', start: { x: 100, y: 100 }, end: { x: 0, y: 100 }, element_type: 'wall', thickness: 10, height: 96, items: [], curvature: 0 },
+        { id: 'w4', start: { x: 0, y: 100 }, end: { x: 0, y: 0 }, element_type: 'wall', thickness: 10, height: 96, items: [], curvature: 0 },
       ];
       
       const result = findEnclosingRoom(elements, { x: 50, y: 50 });

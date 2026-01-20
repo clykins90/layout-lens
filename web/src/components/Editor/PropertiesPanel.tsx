@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useState, type FC } from 'react';
 import { Building2, Palette, Waves, ChevronsRight, ChevronsLeft, Settings2 } from 'lucide-react';
 import type { Element, Room } from '../../types';
 import { distance } from '../../utils/geometry';
+import { lengthUnitForSystem } from '../../utils/units';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
@@ -21,7 +22,7 @@ interface PropertiesPanelProps {
     onUpdateElement: (element: Element) => void;
 }
 
-export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
+export const PropertiesPanel: FC<PropertiesPanelProps> = ({
     selectedElement,
     selectedRoom,
     unitSystem,
@@ -32,6 +33,15 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
     onUpdateElement
 }) => {
     const [isCollapsed, setIsCollapsed] = useState(false);
+    const lengthUnit = lengthUnitForSystem(unitSystem);
+    const selectedLength = selectedElement ? distance(selectedElement.start, selectedElement.end) : 0;
+    const selectedLengthInInches = lengthUnit === 'in' ? selectedLength : selectedLength / 25.4;
+    const selectedLengthInMeters = lengthUnit === 'mm' ? selectedLength / 1000 : selectedLength * 0.0254;
+    const selectedLengthFeet = Math.floor(selectedLengthInInches / 12);
+    const selectedLengthRemainderInches = Math.round(selectedLengthInInches % 12);
+    const displayUnitLabel = unitSystem === 'metric' ? 'm' : 'in';
+    const toDisplayLength = (value: number) => unitSystem === 'metric' ? value / 1000 : value;
+    const fromDisplayLength = (value: number) => unitSystem === 'metric' ? value * 1000 : value;
 
     if (isCollapsed) {
         return (
@@ -88,8 +98,8 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
                                             <Input
                                                 type="number"
                                                 className="h-8 text-sm"
-                                                value={Math.floor(distance(selectedElement.start, selectedElement.end)/(50/12)/12)}
-                                                onChange={e => onUpdateLength(Number(e.target.value), 0, 0)}
+                                                value={selectedLengthFeet}
+                                                onChange={e => onUpdateLength(Number(e.target.value), selectedLengthRemainderInches, 0)}
                                             />
                                         </div>
                                         <div className="col-span-1 space-y-1">
@@ -97,8 +107,8 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
                                             <Input
                                                 type="number"
                                                 className="h-8 text-sm"
-                                                value={Math.floor((distance(selectedElement.start, selectedElement.end)/(50/12)) % 12)}
-                                                readOnly
+                                                value={selectedLengthRemainderInches}
+                                                onChange={e => onUpdateLength(selectedLengthFeet, Number(e.target.value), 0)}
                                             />
                                         </div>
                                     </>
@@ -109,13 +119,64 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
                                             type="number"
                                             step="0.01"
                                             className="h-8 text-sm"
-                                            value={distance(selectedElement.start, selectedElement.end)/164}
+                                            value={Number(selectedLengthInMeters.toFixed(2))}
                                             onChange={e => onUpdateLength(Number(e.target.value), 0, 0)}
                                         />
                                     </div>
                                 )}
                             </div>
                         </div>
+
+                        <div className="space-y-3">
+                            <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Height ({displayUnitLabel})</Label>
+                            <Input
+                                type="number"
+                                step={unitSystem === 'metric' ? '0.01' : '1'}
+                                className="h-8 text-sm"
+                                value={Number(toDisplayLength(selectedElement.height).toFixed(2))}
+                                onChange={e => onUpdateElement({ ...selectedElement, height: fromDisplayLength(Number(e.target.value)) })}
+                            />
+                        </div>
+
+                        {selectedElement.element_type !== 'wall' && (
+                            <div className="space-y-3 pt-2 border-t">
+                                <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Opening ({displayUnitLabel})</Label>
+                                <div className="grid grid-cols-2 gap-2">
+                                    <div className="space-y-1">
+                                        <Label className="text-[10px] text-muted-foreground">Sill</Label>
+                                        <Input
+                                            type="number"
+                                            step={unitSystem === 'metric' ? '0.01' : '1'}
+                                            className="h-8 text-sm"
+                                            value={Number(toDisplayLength(selectedElement.opening?.sillHeight ?? 0).toFixed(2))}
+                                            onChange={e => onUpdateElement({
+                                                ...selectedElement,
+                                                opening: {
+                                                    ...(selectedElement.opening || { sillHeight: 0, headHeight: selectedElement.height }),
+                                                    sillHeight: fromDisplayLength(Number(e.target.value)),
+                                                }
+                                            })}
+                                        />
+                                    </div>
+                                    <div className="space-y-1">
+                                        <Label className="text-[10px] text-muted-foreground">Head</Label>
+                                        <Input
+                                            type="number"
+                                            step={unitSystem === 'metric' ? '0.01' : '1'}
+                                            className="h-8 text-sm"
+                                            value={Number(toDisplayLength(selectedElement.opening?.headHeight ?? selectedElement.height).toFixed(2))}
+                                            onChange={e => onUpdateElement({
+                                                ...selectedElement,
+                                                opening: {
+                                                    ...(selectedElement.opening || { sillHeight: 0, headHeight: selectedElement.height }),
+                                                    headHeight: fromDisplayLength(Number(e.target.value)),
+                                                }
+                                            })}
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+                        )}
 
                         <div className="space-y-3">
                             <div className="flex justify-between">

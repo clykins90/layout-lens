@@ -8,17 +8,13 @@ import {
 } from '@babylonjs/core';
 import type { Element } from '../../types';
 
-// Constants
-const SCALE = 0.1;
-const WINDOW_SILL_HEIGHT = 100 * SCALE; // 100 units from floor
-const WINDOW_HEIGHT = 150 * SCALE; // 150 units tall
-const DOOR_HEIGHT = 210 * SCALE; // 210 units (7ft)
-const FRAME_THICKNESS = 0.3; // Frame width in world units
-const FRAME_DEPTH = 0.5; // Frame depth in world units
+const FRAME_THICKNESS = 0.03; // 3cm
+const FRAME_DEPTH = 0.05; // 5cm
 
 export function buildOpenings(
   scene: Scene,
   elements: Element[],
+  scale: number,
   shadowGenerator?: ShadowGenerator
 ): Mesh[] {
   const meshes: Mesh[] = [];
@@ -30,19 +26,19 @@ export function buildOpenings(
 
   // Build windows
   windows.forEach((element, index) => {
-    const windowMeshes = buildWindow(scene, element, index, shadowGenerator);
+    const windowMeshes = buildWindow(scene, element, index, scale, shadowGenerator);
     meshes.push(...windowMeshes);
   });
 
   // Build doors
   doors.forEach((element, index) => {
-    const doorMeshes = buildDoor(scene, element, index, shadowGenerator);
+    const doorMeshes = buildDoor(scene, element, index, scale, shadowGenerator);
     meshes.push(...doorMeshes);
   });
 
   // Build openings (just trim)
   openings.forEach((element, index) => {
-    const openingMeshes = buildOpening(scene, element, index, shadowGenerator);
+    const openingMeshes = buildOpening(scene, element, index, scale, shadowGenerator);
     meshes.push(...openingMeshes);
   });
 
@@ -53,6 +49,7 @@ function buildWindow(
   scene: Scene,
   element: Element,
   index: number,
+  scale: number,
   shadowGenerator?: ShadowGenerator
 ): Mesh[] {
   const meshes: Mesh[] = [];
@@ -61,10 +58,13 @@ function buildWindow(
   // Calculate dimensions
   const dx = end.x - start.x;
   const dy = end.y - start.y;
-  const length = Math.sqrt(dx * dx + dy * dy) * SCALE;
+  const length = Math.sqrt(dx * dx + dy * dy) * scale;
   const angle = Math.atan2(dy, dx);
-  const midX = ((start.x + end.x) / 2) * SCALE;
-  const midZ = ((start.y + end.y) / 2) * SCALE;
+  const midX = ((start.x + end.x) / 2) * scale;
+  const midZ = ((start.y + end.y) / 2) * scale;
+  const sillHeight = (element.opening?.sillHeight ?? 0) * scale;
+  const headHeight = (element.opening?.headHeight ?? element.height ?? 0) * scale;
+  const windowHeight = Math.max(0, headHeight - sillHeight);
 
   // White frame material
   const frameMaterial = new PBRMaterial(`windowFrameMat_${index}`, scene);
@@ -86,7 +86,7 @@ function buildWindow(
     { width: length, height: FRAME_THICKNESS, depth: FRAME_DEPTH },
     scene
   );
-  bottomFrame.position.set(midX, WINDOW_SILL_HEIGHT, midZ);
+  bottomFrame.position.set(midX, sillHeight, midZ);
   bottomFrame.rotation.y = -angle;
   bottomFrame.material = frameMaterial;
   meshes.push(bottomFrame);
@@ -97,7 +97,7 @@ function buildWindow(
     { width: length, height: FRAME_THICKNESS, depth: FRAME_DEPTH },
     scene
   );
-  topFrame.position.set(midX, WINDOW_SILL_HEIGHT + WINDOW_HEIGHT, midZ);
+  topFrame.position.set(midX, sillHeight + windowHeight, midZ);
   topFrame.rotation.y = -angle;
   topFrame.material = frameMaterial;
   meshes.push(topFrame);
@@ -105,14 +105,14 @@ function buildWindow(
   // Left frame
   const leftFrame = MeshBuilder.CreateBox(
     `windowLeftFrame_${index}`,
-    { width: FRAME_THICKNESS, height: WINDOW_HEIGHT, depth: FRAME_DEPTH },
+    { width: FRAME_THICKNESS, height: windowHeight, depth: FRAME_DEPTH },
     scene
   );
   const leftOffsetX = Math.cos(angle) * (length / 2 - FRAME_THICKNESS / 2);
   const leftOffsetZ = Math.sin(angle) * (length / 2 - FRAME_THICKNESS / 2);
   leftFrame.position.set(
     midX - leftOffsetX,
-    WINDOW_SILL_HEIGHT + WINDOW_HEIGHT / 2,
+    sillHeight + windowHeight / 2,
     midZ - leftOffsetZ
   );
   leftFrame.rotation.y = -angle;
@@ -122,12 +122,12 @@ function buildWindow(
   // Right frame
   const rightFrame = MeshBuilder.CreateBox(
     `windowRightFrame_${index}`,
-    { width: FRAME_THICKNESS, height: WINDOW_HEIGHT, depth: FRAME_DEPTH },
+    { width: FRAME_THICKNESS, height: windowHeight, depth: FRAME_DEPTH },
     scene
   );
   rightFrame.position.set(
     midX + leftOffsetX,
-    WINDOW_SILL_HEIGHT + WINDOW_HEIGHT / 2,
+    sillHeight + windowHeight / 2,
     midZ + leftOffsetZ
   );
   rightFrame.rotation.y = -angle;
@@ -137,10 +137,10 @@ function buildWindow(
   // Glass pane
   const glass = MeshBuilder.CreatePlane(
     `windowGlass_${index}`,
-    { width: length - FRAME_THICKNESS * 2, height: WINDOW_HEIGHT - FRAME_THICKNESS * 2 },
+    { width: length - FRAME_THICKNESS * 2, height: windowHeight - FRAME_THICKNESS * 2 },
     scene
   );
-  glass.position.set(midX, WINDOW_SILL_HEIGHT + WINDOW_HEIGHT / 2, midZ);
+  glass.position.set(midX, sillHeight + windowHeight / 2, midZ);
   glass.rotation.y = -angle + Math.PI / 2;
   glass.material = glassMaterial;
   meshes.push(glass);
@@ -160,6 +160,7 @@ function buildDoor(
   scene: Scene,
   element: Element,
   index: number,
+  scale: number,
   shadowGenerator?: ShadowGenerator
 ): Mesh[] {
   const meshes: Mesh[] = [];
@@ -168,10 +169,13 @@ function buildDoor(
   // Calculate dimensions
   const dx = end.x - start.x;
   const dy = end.y - start.y;
-  const length = Math.sqrt(dx * dx + dy * dy) * SCALE;
+  const length = Math.sqrt(dx * dx + dy * dy) * scale;
   const angle = Math.atan2(dy, dx);
-  const midX = ((start.x + end.x) / 2) * SCALE;
-  const midZ = ((start.y + end.y) / 2) * SCALE;
+  const midX = ((start.x + end.x) / 2) * scale;
+  const midZ = ((start.y + end.y) / 2) * scale;
+  const sillHeight = (element.opening?.sillHeight ?? 0) * scale;
+  const headHeight = (element.opening?.headHeight ?? element.height ?? 0) * scale;
+  const doorHeight = Math.max(0, headHeight - sillHeight);
 
   // Wood frame material
   const frameMaterial = new PBRMaterial(`doorFrameMat_${index}`, scene);
@@ -191,7 +195,7 @@ function buildDoor(
     { width: length, height: FRAME_THICKNESS, depth: FRAME_DEPTH },
     scene
   );
-  topFrame.position.set(midX, DOOR_HEIGHT, midZ);
+  topFrame.position.set(midX, sillHeight + doorHeight, midZ);
   topFrame.rotation.y = -angle;
   topFrame.material = frameMaterial;
   meshes.push(topFrame);
@@ -199,12 +203,12 @@ function buildDoor(
   // Left frame
   const leftFrame = MeshBuilder.CreateBox(
     `doorLeftFrame_${index}`,
-    { width: FRAME_THICKNESS, height: DOOR_HEIGHT, depth: FRAME_DEPTH },
+    { width: FRAME_THICKNESS, height: doorHeight, depth: FRAME_DEPTH },
     scene
   );
   const leftOffsetX = Math.cos(angle) * (length / 2 - FRAME_THICKNESS / 2);
   const leftOffsetZ = Math.sin(angle) * (length / 2 - FRAME_THICKNESS / 2);
-  leftFrame.position.set(midX - leftOffsetX, DOOR_HEIGHT / 2, midZ - leftOffsetZ);
+  leftFrame.position.set(midX - leftOffsetX, sillHeight + doorHeight / 2, midZ - leftOffsetZ);
   leftFrame.rotation.y = -angle;
   leftFrame.material = frameMaterial;
   meshes.push(leftFrame);
@@ -212,10 +216,10 @@ function buildDoor(
   // Right frame
   const rightFrame = MeshBuilder.CreateBox(
     `doorRightFrame_${index}`,
-    { width: FRAME_THICKNESS, height: DOOR_HEIGHT, depth: FRAME_DEPTH },
+    { width: FRAME_THICKNESS, height: doorHeight, depth: FRAME_DEPTH },
     scene
   );
-  rightFrame.position.set(midX + leftOffsetX, DOOR_HEIGHT / 2, midZ + leftOffsetZ);
+  rightFrame.position.set(midX + leftOffsetX, sillHeight + doorHeight / 2, midZ + leftOffsetZ);
   rightFrame.rotation.y = -angle;
   rightFrame.material = frameMaterial;
   meshes.push(rightFrame);
@@ -225,12 +229,12 @@ function buildDoor(
     `doorPanel_${index}`,
     {
       width: length - FRAME_THICKNESS * 2,
-      height: DOOR_HEIGHT - FRAME_THICKNESS,
+      height: doorHeight - FRAME_THICKNESS,
       depth: FRAME_DEPTH * 0.5,
     },
     scene
   );
-  panel.position.set(midX, (DOOR_HEIGHT - FRAME_THICKNESS) / 2, midZ);
+  panel.position.set(midX, sillHeight + (doorHeight - FRAME_THICKNESS) / 2, midZ);
   panel.rotation.y = -angle;
   panel.material = panelMaterial;
   meshes.push(panel);
@@ -250,6 +254,7 @@ function buildOpening(
   scene: Scene,
   element: Element,
   index: number,
+  scale: number,
   shadowGenerator?: ShadowGenerator
 ): Mesh[] {
   const meshes: Mesh[] = [];
@@ -258,11 +263,13 @@ function buildOpening(
   // Calculate dimensions
   const dx = end.x - start.x;
   const dy = end.y - start.y;
-  const length = Math.sqrt(dx * dx + dy * dy) * SCALE;
+  const length = Math.sqrt(dx * dx + dy * dy) * scale;
   const angle = Math.atan2(dy, dx);
-  const midX = ((start.x + end.x) / 2) * SCALE;
-  const midZ = ((start.y + end.y) / 2) * SCALE;
-  const openingHeight = (height || 300) * SCALE;
+  const midX = ((start.x + end.x) / 2) * scale;
+  const midZ = ((start.y + end.y) / 2) * scale;
+  const sillHeight = (element.opening?.sillHeight ?? 0) * scale;
+  const headHeight = (element.opening?.headHeight ?? height ?? 0) * scale;
+  const openingHeight = Math.max(0, headHeight - sillHeight);
 
   // Trim material (light gray)
   const trimMaterial = new PBRMaterial(`openingTrimMat_${index}`, scene);
@@ -276,7 +283,7 @@ function buildOpening(
     { width: length, height: FRAME_THICKNESS * 0.5, depth: FRAME_DEPTH * 0.5 },
     scene
   );
-  topTrim.position.set(midX, openingHeight, midZ);
+  topTrim.position.set(midX, sillHeight + openingHeight, midZ);
   topTrim.rotation.y = -angle;
   topTrim.material = trimMaterial;
   meshes.push(topTrim);
@@ -289,7 +296,7 @@ function buildOpening(
   );
   const offsetX = Math.cos(angle) * (length / 2);
   const offsetZ = Math.sin(angle) * (length / 2);
-  leftTrim.position.set(midX - offsetX, openingHeight / 2, midZ - offsetZ);
+  leftTrim.position.set(midX - offsetX, sillHeight + openingHeight / 2, midZ - offsetZ);
   leftTrim.rotation.y = -angle;
   leftTrim.material = trimMaterial;
   meshes.push(leftTrim);
@@ -300,7 +307,7 @@ function buildOpening(
     { width: FRAME_THICKNESS * 0.5, height: openingHeight, depth: FRAME_DEPTH * 0.5 },
     scene
   );
-  rightTrim.position.set(midX + offsetX, openingHeight / 2, midZ + offsetZ);
+  rightTrim.position.set(midX + offsetX, sillHeight + openingHeight / 2, midZ + offsetZ);
   rightTrim.rotation.y = -angle;
   rightTrim.material = trimMaterial;
   meshes.push(rightTrim);
