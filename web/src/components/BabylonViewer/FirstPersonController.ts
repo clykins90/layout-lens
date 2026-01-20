@@ -1,13 +1,13 @@
 import { Scene, UniversalCamera, Vector3 } from '@babylonjs/core';
 
 // Constants
-const PLAYER_HEIGHT = 17; // 170cm * 0.1 scale
-const MOVEMENT_SPEED = 5; // Units per second
-const MOUSE_SENSITIVITY = 0.002;
+const MOVEMENT_SPEED = 2.5; // Units per second
+const MOUSE_SENSITIVITY = 0.001;
 
 export function setupFirstPersonController(
   scene: Scene,
-  startPosition: Vector3
+  startPosition: Vector3,
+  lookTarget?: Vector3
 ): UniversalCamera {
   // Create UniversalCamera with first-person perspective
   const camera = new UniversalCamera('firstPersonCamera', startPosition, scene);
@@ -15,8 +15,12 @@ export function setupFirstPersonController(
   camera.minZ = 0.1;
   camera.maxZ = 1000;
 
-  // Set initial rotation to look forward (along positive Z)
-  camera.rotation = new Vector3(0, Math.PI, 0);
+  // Set initial view target if provided, otherwise look forward
+  if (lookTarget) {
+    camera.setTarget(lookTarget);
+  } else {
+    camera.rotation = new Vector3(0, Math.PI, 0);
+  }
 
   // Attach camera to canvas for input
   camera.attachControl(scene.getEngine().getRenderingCanvas(), true);
@@ -30,8 +34,9 @@ export function setupFirstPersonController(
   camera.angularSensibility = 1 / MOUSE_SENSITIVITY;
 
   // Lock player height on every frame
+  const lockedHeight = startPosition.y;
   scene.registerBeforeRender(() => {
-    camera.position.y = PLAYER_HEIGHT;
+    camera.position.y = lockedHeight;
   });
 
   // Set up pointer lock on click

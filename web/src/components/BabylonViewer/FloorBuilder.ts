@@ -1,6 +1,5 @@
 import {
   Scene,
-  MeshBuilder,
   PBRMaterial,
   Color3,
   Mesh,
@@ -62,23 +61,6 @@ export function buildFloors(scene: Scene, rooms: Room[], scale: number): Mesh[] 
 
     floors.push(floor);
   });
-
-  // Create infinite ground plane
-  const groundPlane = MeshBuilder.CreateGround(
-    'groundPlane',
-    { width: 1000, height: 1000 },
-    scene
-  );
-  groundPlane.position.y = -0.05; // Slightly below room floors
-
-  const groundMaterial = new PBRMaterial('groundMat', scene);
-  groundMaterial.albedoColor = Color3.FromHexString('#475569');
-  groundMaterial.roughness = 0.9;
-  groundMaterial.metallic = 0;
-  groundPlane.material = groundMaterial;
-  groundPlane.receiveShadows = true;
-
-  floors.push(groundPlane);
 
   return floors;
 }
