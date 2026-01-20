@@ -3,7 +3,7 @@ import { Stage, Layer, Line, Text, Group, Rect, Path } from 'react-konva';
 import Konva from 'konva';
 import ElevationEditor from './ElevationEditor';
 import MagicBuildModal from './MagicBuildModal';
-import ThreeDViewer from './ThreeDViewer';
+import BabylonViewer from './BabylonViewer';
 
 import { useProjectData } from '../hooks/useProjectData';
 import { useEditorState } from '../hooks/useEditorState';
@@ -390,7 +390,7 @@ const BlueprintEditor: React.FC = () => {
 
             <MagicBuildModal open={showMagicModal} onOpenChange={setShowMagicModal} onGenerate={handleMagicGenerate} /> 
             {editingElementId && editingElement && <ElevationEditor element={editingElement as any} allElements={elements as any[]} onUpdate={(updated) => updateElements(elements.map(el => el.id === updated.id ? updated as Element : el))} onClose={() => setEditingElementId(null)} />} 
-            {show3D && <ThreeDViewer project={{ id: 'current', name: projectName, elements, rooms }} onExit={() => setShow3D(false)} />}
+            {show3D && <BabylonViewer project={{ id: 'current', name: projectName, elements, rooms }} onExit={() => setShow3D(false)} />}
         </div>
     );
 };
