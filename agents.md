@@ -49,7 +49,7 @@
     - `services.rs`: Business logic (geometry engine, semantic interpretation).
     - `routes.rs`: Route definitions.
 - **Frontend (`web/src/`)**
-    - `components/BlueprintEditor.tsx`: Main canvas composition.
+    - `components/BlueprintEditor/index.tsx`: Main canvas composition.
     - `components/Editor/`: Sub-components (Toolbar, Palette, Properties).
     - `hooks/`: Custom hooks (`useProjectData`, `useEditorState`).
     - `utils/`: Geometry and formatting helpers.

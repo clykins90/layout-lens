@@ -1,8 +1,9 @@
 import { useCallback, useMemo, useState, type FC, type KeyboardEvent as ReactKeyboardEvent } from 'react';
 
-import type { Element, UnitSystem, VerticalItem } from '../types';
+import type { Element, GridMode, UnitSystem, VerticalItem } from '../types';
+import { useMeasurement } from '../hooks/useMeasurement';
 import { distance } from '../utils/geometry';
-import { getGridStep, lengthUnitForSystem, toPx } from '../utils/units';
+import { toPx } from '../utils/units';
 import {
     DEFAULT_DOOR_HEIGHT_IN,
     DEFAULT_WINDOW_HEAD_IN,
@@ -22,19 +23,18 @@ import { ElevationToolbar } from './ElevationEditor/ElevationToolbar';
 
 interface ElevationEditorProps {
     unitSystem: UnitSystem;
+    gridMode: GridMode;
     element: Element;
     allElements: Element[];
     onUpdate: (updatedElement: Element) => void;
     onClose: () => void;
 }
 
-const ElevationEditor: FC<ElevationEditorProps> = ({ unitSystem, element, allElements, onUpdate, onClose }) => {
+const ElevationEditor: FC<ElevationEditorProps> = ({ unitSystem, gridMode, element, allElements, onUpdate, onClose }) => {
     const [tool, setTool] = useState<ToolType>('select');
     const [selectedItemId, setSelectedId] = useState<string | null>(null);
 
-    const lengthUnit = lengthUnitForSystem(unitSystem);
-    const unitFactor = lengthUnit === 'in' ? 1 : 25.4;
-    const toUnit = useCallback((inches: number) => inches * unitFactor, [unitFactor]);
+    const { lengthUnit, unitFactor, toUnit, gridStep } = useMeasurement(unitSystem, gridMode);
 
     const wallLength = distance(element.start, element.end);
     const wallHeight = element.height || toUnit(96);
@@ -61,7 +61,6 @@ const ElevationEditor: FC<ElevationEditorProps> = ({ unitSystem, element, allEle
     const items = element.items || [];
     const selectedItem = items.find((item) => item.id === selectedItemId) ?? null;
 
-    const gridStep = getGridStep(unitSystem, 'fine', lengthUnit);
     const gridPx = toPx(gridStep, lengthUnit);
 
     const defaultItemSizes = useMemo<Partial<Record<VerticalItem['item_type'], { w: number; h: number }>>>(

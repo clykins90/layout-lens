@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import type { Point } from '../types';
+import type { GridMode, Point } from '../types';
 
 export type Tool = 'select' | 'wall' | 'window' | 'door' | 'opening' | 'room';
 
@@ -10,7 +10,7 @@ export const useEditorState = () => {
     const [mousePos, setMousePos] = useState<Point | null>(null);
     
     // Settings
-    const [gridMode, setGridMode] = useState<'coarse' | 'fine'>('coarse');
+    const [gridMode, setGridMode] = useState<GridMode>('coarse');
 
     return {
         tool, setTool,

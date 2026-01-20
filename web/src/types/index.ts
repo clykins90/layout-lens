@@ -1,5 +1,6 @@
 export type UnitSystem = 'imperial' | 'metric';
 export type LengthUnit = 'in' | 'mm';
+export type GridMode = 'coarse' | 'fine';
 
 export interface Point {
     x: number;

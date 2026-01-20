@@ -1,4 +1,4 @@
-import BlueprintEditor from './components/BlueprintEditor';
+import BlueprintEditor from './components/BlueprintEditor/index';
 
 function App() {
   return (
