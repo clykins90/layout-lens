@@ -1,9 +1,11 @@
-import { useCallback, useMemo, useState, type FC, type KeyboardEvent as ReactKeyboardEvent } from 'react';
+import { useCallback, useMemo, useRef, useState, type FC, type KeyboardEvent as ReactKeyboardEvent } from 'react';
+import type Konva from 'konva';
 
 import type { Element, GridMode, UnitSystem, VerticalItem } from '../types';
 import { useMeasurement } from '../hooks/useMeasurement';
 import { distance } from '../utils/geometry';
 import { toPx } from '../utils/units';
+import { generateWallImage } from '../api/wallImages';
 import {
     DEFAULT_DOOR_HEIGHT_IN,
     DEFAULT_WINDOW_HEAD_IN,
@@ -18,6 +20,7 @@ import {
 } from './ElevationEditor/geometry';
 import { ElevationCanvas } from './ElevationEditor/ElevationCanvas';
 import { ElevationHeader } from './ElevationEditor/ElevationHeader';
+import { ElevationImageModal } from './ElevationEditor/ElevationImageModal';
 import { ElevationSidebar } from './ElevationEditor/ElevationSidebar';
 import { ElevationToolbar } from './ElevationEditor/ElevationToolbar';
 
@@ -33,6 +36,15 @@ interface ElevationEditorProps {
 const ElevationEditor: FC<ElevationEditorProps> = ({ unitSystem, gridMode, element, allElements, onUpdate, onClose }) => {
     const [tool, setTool] = useState<ToolType>('select');
     const [selectedItemId, setSelectedId] = useState<string | null>(null);
+    const [imagePrompt, setImagePrompt] = useState(
+        'Warm modern interior, neutral finishes, soft daylight.'
+    );
+    const [generatedImage, setGeneratedImage] = useState<string | null>(null);
+    const [imageError, setImageError] = useState<string | null>(null);
+    const [isGeneratingImage, setIsGeneratingImage] = useState(false);
+    const [isImageModalOpen, setIsImageModalOpen] = useState(false);
+
+    const stageRef = useRef<Konva.Stage>(null);
 
     const { lengthUnit, unitFactor, toUnit, gridStep } = useMeasurement(unitSystem, gridMode);
 
@@ -176,6 +188,33 @@ const ElevationEditor: FC<ElevationEditorProps> = ({ unitSystem, gridMode, eleme
         [updateItemById]
     );
 
+    const openImageModal = useCallback(() => {
+        setImageError(null);
+        setIsImageModalOpen(true);
+    }, []);
+
+    const handleGenerateWallImage = useCallback(async () => {
+        const stage = stageRef.current;
+        if (!stage) {
+            setImageError('Wall diagram is not ready yet.');
+            return;
+        }
+
+        setIsGeneratingImage(true);
+        setImageError(null);
+        setGeneratedImage(null);
+        try {
+            const diagramDataUrl = stage.toDataURL({ pixelRatio: 2 });
+            const imageDataUrl = await generateWallImage(diagramDataUrl, imagePrompt);
+            setGeneratedImage(imageDataUrl);
+        } catch (error) {
+            console.error(error);
+            setImageError(error instanceof Error ? error.message : 'Failed to generate image.');
+        } finally {
+            setIsGeneratingImage(false);
+        }
+    }, [imagePrompt]);
+
     return (
         <div
             className="fixed inset-0 z-50 bg-background flex flex-col overflow-hidden animate-in fade-in duration-200"
@@ -190,13 +229,16 @@ const ElevationEditor: FC<ElevationEditorProps> = ({ unitSystem, gridMode, eleme
                 wallHeight={wallHeight}
                 unitSystem={unitSystem}
                 lengthUnit={lengthUnit}
+                isGeneratingImage={isGeneratingImage}
                 onClose={onClose}
+                onGenerateImage={openImageModal}
             />
 
             <div className="flex flex-1 min-h-0 overflow-hidden">
                 <ElevationToolbar tool={tool} onToolChange={setTool} />
                 <ElevationCanvas
                     element={element}
+                    stageRef={stageRef}
                     tool={tool}
                     selectedItemId={selectedItemId}
                     wallLength={wallLength}
@@ -228,6 +270,17 @@ const ElevationEditor: FC<ElevationEditorProps> = ({ unitSystem, gridMode, eleme
                     onDeleteSelected={deleteItem}
                 />
             </div>
+
+            <ElevationImageModal
+                open={isImageModalOpen}
+                prompt={imagePrompt}
+                generatedImage={generatedImage}
+                error={imageError}
+                isGenerating={isGeneratingImage}
+                onPromptChange={setImagePrompt}
+                onGenerate={handleGenerateWallImage}
+                onOpenChange={setIsImageModalOpen}
+            />
         </div>
     );
 };

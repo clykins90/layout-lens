@@ -1,4 +1,4 @@
-import { memo, useLayoutEffect, useRef, useState } from 'react';
+import { memo, useLayoutEffect, useRef, useState, type RefObject } from 'react';
 import { Stage, Layer, Rect, Circle, Line, Text, Group, Path } from 'react-konva';
 import Konva from 'konva';
 import { Maximize2, ZoomIn, ZoomOut } from 'lucide-react';
@@ -20,6 +20,7 @@ type DefaultItemSizes = Partial<Record<VerticalItem['item_type'], { w: number; h
 
 type ElevationCanvasProps = {
     element: Element;
+    stageRef?: RefObject<Konva.Stage>;
     tool: ToolType;
     selectedItemId: string | null;
     wallLength: number;
@@ -304,6 +305,7 @@ ElevationItems.displayName = 'ElevationItems';
 
 export const ElevationCanvas = ({
     element,
+    stageRef: externalStageRef,
     tool,
     selectedItemId,
     wallLength,
@@ -324,7 +326,8 @@ export const ElevationCanvas = ({
     const [stagePos, setStagePos] = useState({ x: 0, y: 0 });
     const [canvasSize, setCanvasSize] = useState({ width: 0, height: 0 });
 
-    const stageRef = useRef<Konva.Stage>(null);
+    const localStageRef = useRef<Konva.Stage>(null);
+    const stageRef = externalStageRef ?? localStageRef;
     const containerRef = useRef<HTMLDivElement>(null);
 
     const items = element.items || [];

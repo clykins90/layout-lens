@@ -14,6 +14,17 @@ pub struct AiPrompt {
     pub prompt: String,
 }
 
+#[derive(serde::Deserialize)]
+pub struct WallImageRequest {
+    pub diagram_data_url: String,
+    pub prompt: Option<String>,
+}
+
+#[derive(serde::Serialize)]
+pub struct WallImageResponse {
+    pub image_data_url: String,
+}
+
 pub async fn health_check() -> &'static str {
     "OK"
 }
@@ -58,6 +69,17 @@ pub async fn generate_ai_layout(Json(payload): Json<AiPrompt>) -> impl IntoRespo
         Ok(semantic_proj) => {
             let project = interpret_semantic_logic(semantic_proj);
             (StatusCode::OK, Json(project)).into_response()
+        },
+        Err(e) => {
+            (StatusCode::INTERNAL_SERVER_ERROR, e).into_response()
+        }
+    }
+}
+
+pub async fn generate_wall_image(Json(payload): Json<WallImageRequest>) -> impl IntoResponse {
+    match ai::generate_wall_image(payload.diagram_data_url, payload.prompt).await {
+        Ok(image_data_url) => {
+            (StatusCode::OK, Json(WallImageResponse { image_data_url })).into_response()
         },
         Err(e) => {
             (StatusCode::INTERNAL_SERVER_ERROR, e).into_response()

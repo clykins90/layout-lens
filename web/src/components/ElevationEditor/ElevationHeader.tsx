@@ -1,4 +1,4 @@
-import { ChevronLeft, X } from 'lucide-react';
+import { ChevronLeft, Sparkles, X } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { formatLength } from '../../utils/units';
@@ -10,10 +10,21 @@ type ElevationHeaderProps = {
     wallHeight: number;
     unitSystem: UnitSystem;
     lengthUnit: LengthUnit;
+    isGeneratingImage: boolean;
     onClose: () => void;
+    onGenerateImage: () => void;
 };
 
-export const ElevationHeader = ({ element, wallLength, wallHeight, unitSystem, lengthUnit, onClose }: ElevationHeaderProps) => (
+export const ElevationHeader = ({
+    element,
+    wallLength,
+    wallHeight,
+    unitSystem,
+    lengthUnit,
+    isGeneratingImage,
+    onClose,
+    onGenerateImage,
+}: ElevationHeaderProps) => (
     <div className="flex h-14 items-center justify-between border-b px-4 bg-background">
         <div className="flex items-center gap-4">
             <Button variant="ghost" size="icon" onClick={onClose} title="Back">
@@ -28,6 +39,10 @@ export const ElevationHeader = ({ element, wallLength, wallHeight, unitSystem, l
             </div>
         </div>
         <div className="flex items-center gap-2">
+            <Button variant="secondary" size="sm" onClick={onGenerateImage} disabled={isGeneratingImage}>
+                <Sparkles className="size-4" />
+                {isGeneratingImage ? 'Rendering...' : 'Generate Image'}
+            </Button>
             <Button variant="ghost" size="icon" onClick={onClose}>
                 <X className="size-5" />
             </Button>
